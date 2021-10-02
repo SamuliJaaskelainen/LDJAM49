@@ -79,13 +79,14 @@ public class WireframeRenderer : MonoBehaviour
         {
             var vertexTuple = GetVertexTuple(vertexA, vertexB);
             int edge = -1;
-            if(!vertexPairToEdge.TryGetValue(vertexTuple, out edge))
+            if (!vertexPairToEdge.TryGetValue(vertexTuple, out edge))
             {
                 edge = edgeTriangles.Count;
                 vertexPairToEdge[vertexTuple] = edge;
                 edgeTriangles.Add(new Tuple<int, int>(triangle, -1));
                 // Debug.LogFormat("AddEdge {0} {1} new", vertexA, vertexB);
-            } else
+            }
+            else
             {
                 edgeTriangles[edge] = new Tuple<int, int>(edgeTriangles[edge].Item1, triangle);
                 // Debug.LogFormat("AddEdge {0} {1} found", vertexA, vertexB);
@@ -95,12 +96,13 @@ public class WireframeRenderer : MonoBehaviour
         public void GenerateEdgeAngles(Vector3[] vertices, int[] triangles)
         {
             edgeAngles = new float[edgeTriangles.Count];
-            for(int i = 0; i < edgeTriangles.Count; ++i)
+            for (int i = 0; i < edgeTriangles.Count; ++i)
             {
-                if(edgeTriangles[i].Item2 == -1)
+                if (edgeTriangles[i].Item2 == -1)
                 {
                     edgeAngles[i] = 360.0f;
-                } else
+                }
+                else
                 {
                     int triangleA = edgeTriangles[i].Item1;
                     int triangleB = edgeTriangles[i].Item2;
@@ -164,7 +166,7 @@ public class WireframeRenderer : MonoBehaviour
             this.skinIndex = skinIndex;
             this.edgeCache = new EdgeCache(vertices.Length);
 
-            for(int i = 0; i < triangles.Length; i += 3)
+            for (int i = 0; i < triangles.Length; i += 3)
             {
                 edgeCache.AddEdge(triangles[i], triangles[i + 1], i / 3);
                 edgeCache.AddEdge(triangles[i + 1], triangles[i + 2], i / 3);
@@ -186,7 +188,6 @@ public class WireframeRenderer : MonoBehaviour
     private List<MeshCache> meshCaches = new List<MeshCache>();
     private bool cacheRequiresUpdate = false;
     private AudioRender.IRenderDevice renderDevice;
-    private Matrix4x4 projectionMatrix;
     private Matrix4x4 frameMatrix;
 
     public void AddMesh(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer, float edgeAngleLimit)
@@ -236,7 +237,6 @@ public class WireframeRenderer : MonoBehaviour
         if (!renderCamera)
         {
             renderCamera = Camera.main;
-            projectionMatrix = renderCamera.projectionMatrix;
         }
 
         staticObjects.CollectionChanged += NotifyCacheForUpdate;
@@ -281,7 +281,7 @@ public class WireframeRenderer : MonoBehaviour
             UpdateCache();
         }
 
-        frameMatrix = projectionMatrix * renderCamera.worldToCameraMatrix;
+        frameMatrix = renderCamera.projectionMatrix * renderCamera.worldToCameraMatrix;
 
         for (int i = 0; i < meshCaches.Count; ++i)
         {

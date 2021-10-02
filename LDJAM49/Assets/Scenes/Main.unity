@@ -1894,7 +1894,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac2861ae79aae9140b7db69a0cdb5a10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  useAudioRender: 1
+  useAudioRender: 0
   renderCamera: {fileID: 2042811641}
   randomOffset: 0
   intensity: 0.35
