@@ -1897,6 +1897,8 @@ MonoBehaviour:
   useAudioRender: 1
   renderCamera: {fileID: 2042811641}
   randomOffset: 0
+  intensity: 0.35
+  edgeAngleLimit: 1
 --- !u!81 &2042811640
 AudioListener:
   m_ObjectHideFlags: 0

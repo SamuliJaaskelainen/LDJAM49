@@ -10,12 +10,17 @@ public class WireframeObject : MonoBehaviour
     [SerializeField] WireframeRenderer.RenderType renderType = WireframeRenderer.RenderType.Triangle;
 
     MeshFilter meshFilter;
+    MeshRenderer meshRenderer;
 
     private void OnEnable()
     {
         if (!meshFilter)
         {
             meshFilter = GetComponent<MeshFilter>();
+        }
+        if (!meshRenderer)
+        {
+            meshRenderer = GetComponent<MeshRenderer>();
         }
 
         if (skinnedMeshRenderer)
@@ -29,7 +34,7 @@ public class WireframeObject : MonoBehaviour
         {
             if (WireframeRenderer.Instance)
             {
-                WireframeRenderer.Instance.AddMesh(renderType, meshFilter);
+                WireframeRenderer.Instance.AddMesh(renderType, meshFilter, meshRenderer);
             }
         }
     }
@@ -65,7 +70,7 @@ public class WireframeObject : MonoBehaviour
 
             if (WireframeRenderer.Instance)
             {
-                WireframeRenderer.Instance.AddMesh(renderType, meshFilter);
+                WireframeRenderer.Instance.AddMesh(renderType, meshFilter, meshRenderer);
             }
         }
     }

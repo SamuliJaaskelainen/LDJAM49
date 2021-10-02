@@ -216,7 +216,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 753292006}
-  m_Mesh: {fileID: -2222346464153789849, guid: b289211cbf14656489899b72e6afd575, type: 3}
+  m_Mesh: {fileID: -2222346464153789849, guid: 6c41799adcbfe5c4a9e5a5a908d8f871, type: 3}
 --- !u!4 &753292010
 Transform:
   m_ObjectHideFlags: 0
@@ -226,7 +226,7 @@ Transform:
   m_GameObject: {fileID: 753292006}
   m_LocalRotation: {x: -0, y: -0.7071068, z: -0.7071068, w: 0}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 0.60000026, y: 0.60000014, z: 0.60000014}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
@@ -244,6 +244,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
+  renderType: 1
 --- !u!1 &1688218242
 GameObject:
   m_ObjectHideFlags: 0
@@ -288,8 +289,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac2861ae79aae9140b7db69a0cdb5a10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  useAudioRender: 0
   renderCamera: {fileID: 675085829}
-  drawQuads: 0
+  randomOffset: 0
+  intensity: 0.35
+  edgeAngleLimit: 0
 --- !u!1001 &5161361267439828252
 PrefabInstance:
   m_ObjectHideFlags: 0

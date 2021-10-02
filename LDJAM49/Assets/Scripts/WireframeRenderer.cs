@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 public class WireframeRenderer : MonoBehaviour
@@ -19,16 +21,20 @@ public class WireframeRenderer : MonoBehaviour
     [SerializeField] private bool useAudioRender = false;
     [SerializeField] private Camera renderCamera;
     public float randomOffset = 0.0f;
+    [SerializeField] private float intensity = 0.35f;
+    [SerializeField] private float edgeAngleLimit = 0.0f;
 
     private class StaticObject
     {
         public RenderType renderType;
         public MeshFilter meshFilter;
+        public MeshRenderer meshRenderer; // Optional, used for occlusion culling
 
-        public StaticObject(RenderType renderType, MeshFilter meshFilter)
+        public StaticObject(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer)
         {
             this.renderType = renderType;
             this.meshFilter = meshFilter;
+            this.meshRenderer = meshRenderer;
         }
     }
     private ObservableCollection<StaticObject> staticObjects = new ObservableCollection<StaticObject>();
@@ -46,14 +52,95 @@ public class WireframeRenderer : MonoBehaviour
     }
     private ObservableCollection<SkinnedObject> skinnedObjects = new ObservableCollection<SkinnedObject>();
 
+    private class EdgeCache
+    {
+        private Dictionary<Tuple<int, int>, int> vertexPairToEdge;
+        private List<Tuple<int, int>> edgeTriangles;
+        private float[] edgeAngles;
+
+        public EdgeCache(int maxEdgeCount)
+        {
+            this.edgeTriangles = new List<Tuple<int, int>>(maxEdgeCount);
+            this.vertexPairToEdge = new Dictionary<Tuple<int, int>, int>(maxEdgeCount);
+        }
+
+        public void AddEdge(int vertexA, int vertexB, int triangle)
+        {
+            var vertexTuple = GetVertexTuple(vertexA, vertexB);
+            int edge = -1;
+            if(!vertexPairToEdge.TryGetValue(vertexTuple, out edge))
+            {
+                edge = edgeTriangles.Count;
+                vertexPairToEdge[vertexTuple] = edge;
+                edgeTriangles.Add(new Tuple<int, int>(triangle, -1));
+                // Debug.LogFormat("AddEdge {0} {1} new", vertexA, vertexB);
+            } else
+            {
+                edgeTriangles[edge] = new Tuple<int, int>(edgeTriangles[edge].Item1, triangle);
+                // Debug.LogFormat("AddEdge {0} {1} found", vertexA, vertexB);
+            }
+        }
+
+        public void GenerateEdgeAngles(Vector3[] vertices, int[] triangles)
+        {
+            edgeAngles = new float[edgeTriangles.Count];
+            for(int i = 0; i < edgeTriangles.Count; ++i)
+            {
+                if(edgeTriangles[i].Item2 == -1)
+                {
+                    edgeAngles[i] = 360.0f;
+                } else
+                {
+                    int triangleA = edgeTriangles[i].Item1;
+                    int triangleB = edgeTriangles[i].Item2;
+
+                    Vector3 a0 = vertices[triangles[triangleA * 3 + 0]];
+                    Vector3 a1 = vertices[triangles[triangleA * 3 + 1]];
+                    Vector3 a2 = vertices[triangles[triangleA * 3 + 2]];
+
+                    Vector3 b0 = vertices[triangles[triangleB * 3 + 0]];
+                    Vector3 b1 = vertices[triangles[triangleB * 3 + 1]];
+                    Vector3 b2 = vertices[triangles[triangleB * 3 + 2]];
+
+                    Vector3 normalA = Vector3.Cross(a1 - a0, a2 - a0);
+                    Vector3 normalB = Vector3.Cross(b1 - b0, b2 - b0);
+
+                    edgeAngles[i] = Vector3.Angle(normalA, normalB);
+                    // Debug.LogFormat("{0}, {1}, {2}, {3}, {4}", edgeAngles[i].ToString("0.00000"), triangleA, triangleB, normalA, normalB);
+                }
+            }
+        }
+
+        public float GetEdgeAngle(int edge)
+        {
+            return edgeAngles[edge];
+        }
+
+        public float GetEdgeAngle(int vertexA, int vertexB)
+        {
+            var tuple = GetVertexTuple(vertexA, vertexB);
+            int edge = vertexPairToEdge[tuple];
+            float angle = edgeAngles[edge];
+            // Debug.LogFormat("GetEdgeAngle({0}, {1}) -> edge={2} -> angle={3}", vertexA, vertexB, edge, angle);
+            return angle;
+        }
+
+        private Tuple<int, int> GetVertexTuple(int vertexA, int vertexB)
+        {
+            return new Tuple<int, int>(Math.Min(vertexA, vertexB), Math.Max(vertexA, vertexB));
+        }
+    }
+
     private class MeshCache
     {
         public Mesh mesh { get; private set; }
+        public bool edges { get; private set; }
         public int[] triangles { get; private set; }
         public Vector3[] vertices { get; private set; }
         public Transform transform { get; private set; }
         public RenderType renderType { get; private set; }
         public int skinIndex { get; private set; }
+        public EdgeCache edgeCache { get; private set; }
 
         public MeshCache(Mesh mesh, Transform transform, RenderType renderType, int skinIndex = 0)
         {
@@ -63,6 +150,17 @@ public class WireframeRenderer : MonoBehaviour
             this.transform = transform;
             this.renderType = renderType;
             this.skinIndex = skinIndex;
+            this.edgeCache = new EdgeCache(vertices.Length);
+
+            for(int i = 0; i < triangles.Length; i += 3)
+            {
+                edgeCache.AddEdge(triangles[i], triangles[i + 1], i / 3);
+                edgeCache.AddEdge(triangles[i + 1], triangles[i + 2], i / 3);
+                edgeCache.AddEdge(triangles[i + 2], triangles[i], i / 3);
+            }
+            edgeCache.GenerateEdgeAngles(vertices, triangles);
+
+            Debug.LogFormat("New MeshCache with {0} vertices", vertices.Length);
         }
 
         public void Animate(SkinnedMeshRenderer skinnedMeshRenderer)
@@ -73,15 +171,15 @@ public class WireframeRenderer : MonoBehaviour
         }
     }
 
-    private List<MeshCache> meshCache = new List<MeshCache>();
+    private List<MeshCache> meshCaches = new List<MeshCache>();
     private bool cacheRequiresUpdate = false;
     private AudioRender.IRenderDevice renderDevice;
     private Matrix4x4 projectionMatrix;
     private Matrix4x4 frameMatrix;
 
-    public void AddMesh(RenderType renderType, MeshFilter meshFilter)
+    public void AddMesh(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer)
     {
-        staticObjects.Add(new StaticObject(renderType, meshFilter));
+        staticObjects.Add(new StaticObject(renderType, meshFilter, meshRenderer));
     }
 
     public void AddSkinnedMesh(SkinnedMeshRenderer skinnedMeshRenderer, MeshFilter meshFilter)
@@ -162,7 +260,7 @@ public class WireframeRenderer : MonoBehaviour
         //Debug.Log("Starting WireframeRenderer update");
 
         renderDevice.Begin();
-        renderDevice.SetIntensity(0.35f);
+        renderDevice.SetIntensity(intensity);
         // renderDevice.SetPoint(Vector2.zero);
         // renderDevice.DrawCircle(0.5f);
 
@@ -173,9 +271,9 @@ public class WireframeRenderer : MonoBehaviour
 
         frameMatrix = projectionMatrix * renderCamera.worldToCameraMatrix;
 
-        for (int i = 0; i < meshCache.Count; ++i)
+        for (int i = 0; i < meshCaches.Count; ++i)
         {
-            switch (meshCache[i].renderType)
+            switch (meshCaches[i].renderType)
             {
                 case RenderType.Line:
                     DrawLines(i);
@@ -190,7 +288,7 @@ public class WireframeRenderer : MonoBehaviour
                     break;
 
                 case RenderType.Skinned:
-                    meshCache[i].Animate(skinnedObjects[meshCache[i].skinIndex].skinnedMeshRenderer);
+                    meshCaches[i].Animate(skinnedObjects[meshCaches[i].skinIndex].skinnedMeshRenderer);
                     break;
             }
         }
@@ -208,25 +306,26 @@ public class WireframeRenderer : MonoBehaviour
 
     private void UpdateCache()
     {
-        //Debug.Log("Update mesh cache.");
-        meshCache.Clear();
+        Debug.Log("Update mesh cache.");
+        meshCaches.Clear();
+
         foreach (StaticObject staticObject in staticObjects)
         {
-            meshCache.Add(new MeshCache(staticObject.meshFilter.mesh, staticObject.meshFilter.transform, staticObject.renderType));
+            meshCaches.Add(new MeshCache(staticObject.meshFilter.mesh, staticObject.meshFilter.transform, staticObject.renderType));
         }
 
         for (int i = 0; i < skinnedObjects.Count; ++i)
         {
-            meshCache.Add(new MeshCache(skinnedObjects[i].skinnedMeshFilter.mesh, skinnedObjects[i].skinnedMeshFilter.transform, RenderType.Skinned, i));
+            meshCaches.Add(new MeshCache(skinnedObjects[i].skinnedMeshFilter.mesh, skinnedObjects[i].skinnedMeshFilter.transform, RenderType.Skinned, i));
         }
         cacheRequiresUpdate = false;
     }
 
     private void DrawLines(int cacheIndex)
     {
-        if (meshCache[cacheIndex].mesh && meshCache[cacheIndex].transform)
+        if (meshCaches[cacheIndex].mesh && meshCaches[cacheIndex].transform)
         {
-            for (int i = 0; i < meshCache[cacheIndex].vertices.Length; i += 2)
+            for (int i = 0; i < meshCaches[cacheIndex].vertices.Length; i += 2)
             {
                 DrawLine(cacheIndex, i + 0, i + 1);
             }
@@ -235,14 +334,30 @@ public class WireframeRenderer : MonoBehaviour
 
     private void DrawTriangles(int cacheIndex)
     {
-        if (meshCache[cacheIndex].mesh && meshCache[cacheIndex].transform)
+        if (!meshCaches[cacheIndex].mesh && !meshCaches[cacheIndex].transform)
         {
-            for (int i = 0; i < meshCache[cacheIndex].triangles.Length; i += 3)
+            return;
+        }
+        if (staticObjects[cacheIndex].meshRenderer && !staticObjects[cacheIndex].meshRenderer.isVisible)
+        {
+            // Occlusion culling
+            return;
+        }
+        var meshCache = meshCaches[cacheIndex];
+        for (int i = 0; i < meshCache.triangles.Length; i += 3)
+        {
+            if (TriangleFacesCamera(cacheIndex, i))
             {
-                if (TriangleFacesCamera(cacheIndex, i))
+                // if(meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i], meshCache.triangles[i + 1]) >= edgeAngleLimit)
                 {
                     DrawLine(cacheIndex, i + 0, i + 1);
+                }
+                // if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i + 1], meshCache.triangles[i + 2]) >= edgeAngleLimit)
+                {
                     DrawLine(cacheIndex, i + 1, i + 2);
+                }
+                // if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i + 2], meshCache.triangles[i + 0]) >= edgeAngleLimit)
+                {
                     DrawLine(cacheIndex, i + 2, i + 0);
                 }
             }
@@ -251,9 +366,9 @@ public class WireframeRenderer : MonoBehaviour
 
     private void DrawQuads(int cacheIndex)
     {
-        if (meshCache[cacheIndex].mesh && meshCache[cacheIndex].transform)
+        if (meshCaches[cacheIndex].mesh && meshCaches[cacheIndex].transform)
         {
-            for (int i = 0; i < meshCache[cacheIndex].triangles.Length; i += 6)
+            for (int i = 0; i < meshCaches[cacheIndex].triangles.Length; i += 6)
             {
                 if (TriangleFacesCamera(cacheIndex, i))
                 {
@@ -272,9 +387,9 @@ public class WireframeRenderer : MonoBehaviour
 
     private Vector4 GetClipPoint(int cacheIndex, int triangleListIdx)
     {
-        Vector3 offset = Random.onUnitSphere * randomOffset;
-        Vector3 localPoint = meshCache[cacheIndex].vertices[meshCache[cacheIndex].triangles[triangleListIdx]];
-        Vector3 worldPoint = meshCache[cacheIndex].transform.TransformPoint(localPoint) + offset;
+        Vector3 offset = UnityEngine.Random.onUnitSphere * randomOffset;
+        Vector3 localPoint = meshCaches[cacheIndex].vertices[meshCaches[cacheIndex].triangles[triangleListIdx]];
+        Vector3 worldPoint = meshCaches[cacheIndex].transform.TransformPoint(localPoint) + offset;
         Vector4 clipPoint = frameMatrix * new Vector4(worldPoint.x, worldPoint.y, worldPoint.z, 1.0f);
         return clipPoint;
     }
@@ -292,8 +407,8 @@ public class WireframeRenderer : MonoBehaviour
 
     private Vector3 GetScreenPoint(int cacheIndex, int triangleListIdx)
     {
-        Vector3 localPoint = meshCache[cacheIndex].vertices[meshCache[cacheIndex].triangles[triangleListIdx]];
-        Vector3 screenPoint = renderCamera.WorldToScreenPoint(meshCache[cacheIndex].transform.TransformPoint(localPoint));
+        Vector3 localPoint = meshCaches[cacheIndex].vertices[meshCaches[cacheIndex].triangles[triangleListIdx]];
+        Vector3 screenPoint = renderCamera.WorldToScreenPoint(meshCaches[cacheIndex].transform.TransformPoint(localPoint));
         return screenPoint;
     }
 
