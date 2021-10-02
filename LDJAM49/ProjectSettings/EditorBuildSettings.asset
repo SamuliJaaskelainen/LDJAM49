@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/TestSceneClipping.unity
-    guid: 8f37df48532b6fa44862a4f890c2bc2d
+    path: Assets/Scenes/Menu.unity
+    guid: dc3a413670d06004785223cfd7890eaf
+  - enabled: 1
+    path: Assets/Scenes/Main.unity
+    guid: 32ba78b6585e677459dcba113962d724
   m_configObjects: {}

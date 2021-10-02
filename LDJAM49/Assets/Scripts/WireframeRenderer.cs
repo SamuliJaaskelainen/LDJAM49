@@ -18,7 +18,7 @@ public class WireframeRenderer : MonoBehaviour
     [Header("Camera to render lines from. Use square aspect for improved preview.")]
     [SerializeField] private bool useAudioRender = false;
     [SerializeField] private Camera renderCamera;
-    [SerializeField] float randomOffset = 0.0f;
+    public float randomOffset = 0.0f;
 
     private class StaticObject
     {
@@ -142,7 +142,7 @@ public class WireframeRenderer : MonoBehaviour
         else
         {
             Debug.Log("Initializing ScreenRenderDevice");
-            renderDevice = new AudioRender.ScreenRenderDevice("Assets/Resources/ScopeBackground.jpg", true, true);
+            renderDevice = new AudioRender.ScreenRenderDevice(Application.streamingAssetsPath + "/ScopeBackground.jpg", true, true);
             Debug.Log("ScreenRenderDevice initialized");
         }
     }
@@ -203,7 +203,7 @@ public class WireframeRenderer : MonoBehaviour
 
     private void UpdateCache()
     {
-        Debug.Log("Update mesh cache.");
+        //Debug.Log("Update mesh cache.");
         meshCache.Clear();
         foreach (StaticObject staticObject in staticObjects)
         {

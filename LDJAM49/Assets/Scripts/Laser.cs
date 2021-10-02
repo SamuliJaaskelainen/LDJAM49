@@ -12,6 +12,7 @@ public class Laser : MonoBehaviour
 
     void Hit()
     {
+        EffectManager.Instance.SpawnSmallExplosion(transform.position);
         CancelInvoke();
         Destroy(gameObject);
     }
@@ -24,7 +25,7 @@ public class Laser : MonoBehaviour
         {
             if (hit.transform.tag != "Untagged")
             {
-                hit.transform.SendMessage("OnHit", SendMessageOptions.DontRequireReceiver);
+                hit.transform.SendMessage("OnHit", 1, SendMessageOptions.DontRequireReceiver);
             }
             Hit();
         }

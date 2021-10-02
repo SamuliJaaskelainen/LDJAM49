@@ -616,28 +616,32 @@ MonoBehaviour:
   m_text: 'LDJAM 49
 
 
-    W A S D Ctrl Space: Move
+    Click this window to enable controls
+
+
+    W A S D Ctrl
+    Space: Move
 
     Q E Mouse: Turn
 
-    Shift:
-    Turbo
+    Shift: Turbo
 
     L Mouse: Laser
 
-    R Mouse: Rocket
+    R
+    Mouse: Rocket (hold to lock targets)
 
     F: Tracktor beam
 
-    TAB:
-    Map
+    TAB: Map
 
-    PGUP: Increase mouse sensitivity
+    PGUP:
+    Increase mouse sensitivity
 
     PGDW: Decrease mouse sensivity
 
-    HOME:
-    Increase field of view
+    HOME: Increase
+    field of view
 
     END: Decrease field of view
 
@@ -1066,10 +1070,12 @@ MonoBehaviour:
   speed: 10
   turboMultiplier: 2.5
   spinSpeed: 300
+  health: 10
   grabJoint: {fileID: 131187085}
   barrel: {fileID: 1664394224}
   laserPrefab: {fileID: 2455357403465259073, guid: e0f338c25c1f95b49a73ecaa99cdc8eb, type: 3}
   rocketPrefab: {fileID: 2455357403465259073, guid: 2b27e3cc68dcf05458a523b8022ad7d7, type: 3}
+  characterController: {fileID: 0}
 --- !u!1 &1415750844
 GameObject:
   m_ObjectHideFlags: 0
@@ -1085,7 +1091,7 @@ GameObject:
   - component: {fileID: 1415750846}
   - component: {fileID: 1415750850}
   m_Layer: 0
-  m_Name: Cube
+  m_Name: PhysCube
   m_TagString: Phys
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1354,6 +1360,7 @@ GameObject:
   - component: {fileID: 1800101756}
   - component: {fileID: 1800101758}
   - component: {fileID: 1800101759}
+  - component: {fileID: 1800101760}
   m_Layer: 0
   m_Name: Managers
   m_TagString: Untagged
@@ -1416,6 +1423,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9dd22750695d2554fb456dfc22b4ce79, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1800101760
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1800101755}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0a6f6f5702ade5f4fb56a9b06853f38f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gameParent: {fileID: 1982778185}
+  smallExplosion: {fileID: 7623249054597695017, guid: 169a66c957ef8984db817ba54980a685, type: 3}
+  explosion: {fileID: 7623249054597695017, guid: 76cd6d9022cd5ff458c59a2cc119330c, type: 3}
 --- !u!1001 &1812422746
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1739,7 +1761,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0, g: 0, b: 0, a: 0.39215687}
+  m_Color: {r: 0, g: 0, b: 0, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

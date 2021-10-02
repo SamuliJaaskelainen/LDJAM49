@@ -13,19 +13,29 @@ public class Player : MonoBehaviour
     [SerializeField] float speed = 10.0f;
     [SerializeField] float turboMultiplier = 2.0f;
     [SerializeField] float spinSpeed = 100.0f;
+    [SerializeField] int health = 10;
     [SerializeField] ConfigurableJoint grabJoint;
     [SerializeField] Transform barrel;
     [SerializeField] GameObject laserPrefab;
     [SerializeField] GameObject rocketPrefab;
 
-    CharacterController characterController;
+    public CharacterController characterController;
     bool isLockingTargets = false;
     List<GameObject> lockedTargets = new List<GameObject>();
+    float laserTimer;
+    float laserRate = 0.33f;
+    float rocketTimer;
+    float rocketRate = 0.9f;
+    Vector3 lastCheckpoint;
+    float hpTimer;
+    float hpRechargeRate = 1.0f;
+    float hpRechargeDelay = 5.0f;
 
     void Awake()
     {
         Instance = this;
         characterController = GetComponent<CharacterController>();
+        lastCheckpoint = transform.position;
     }
 
     void Update()
@@ -113,17 +123,19 @@ public class Player : MonoBehaviour
         }
         else
         {
-            if (Input.GetMouseButtonDown(0))
+            if (Input.GetMouseButton(0) && Time.time > laserTimer)
             {
+                laserTimer = Time.time + laserRate;
                 GameObject.Instantiate(laserPrefab, barrel.position, barrel.rotation);
             }
 
-            if (Input.GetMouseButtonDown(1))
+            if (Input.GetMouseButtonDown(1) && Time.time > rocketTimer)
             {
+                rocketTimer = Time.time + rocketRate;
                 lockedTargets.Clear();
                 isLockingTargets = true;
             }
-            else if (Input.GetMouseButtonUp(1) || lockedTargets.Count >= 3)
+            else if ((Input.GetMouseButtonUp(1) || lockedTargets.Count >= 3) && isLockingTargets)
             {
                 isLockingTargets = false;
 
@@ -136,12 +148,16 @@ public class Player : MonoBehaviour
                     }
                     lockedTargets.Clear();
                 }
+                else
+                {
+                    GameObject rocket = GameObject.Instantiate(rocketPrefab, barrel.position, barrel.rotation);
+                }
             }
 
             if (isLockingTargets)
             {
                 RaycastHit hit;
-                if (Physics.Raycast(transform.position, transform.forward, out hit, 20.0f))
+                if (Physics.SphereCast(transform.position, 0.2f, transform.forward, out hit, 20.0f))
                 {
                     if (hit.transform.tag == "Enemy")
                     {
@@ -188,5 +204,42 @@ public class Player : MonoBehaviour
                 }
             }
         }
+
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            TakeDamage(1);
+        }
+
+        if (Time.time > hpTimer && health < 10)
+        {
+            hpTimer = Time.time + hpRechargeRate;
+            health++;
+            WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
+        }
+    }
+
+    public void OnHit(int damage)
+    {
+        TakeDamage(damage);
+    }
+
+    public void TakeDamage(int damage)
+    {
+        hpTimer = Time.time + hpRechargeDelay;
+        health -= damage;
+        WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
+
+        if (health <= 0)
+        {
+            Respawn();
+        }
+    }
+
+    public void Respawn()
+    {
+        transform.position = lastCheckpoint;
+        health = 10;
+        WireframeRenderer.Instance.randomOffset = 0.0f;
+        grabJoint.connectedBody = null;
     }
 }

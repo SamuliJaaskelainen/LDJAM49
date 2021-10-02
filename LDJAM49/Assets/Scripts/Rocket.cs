@@ -19,14 +19,18 @@ public class Rocket : MonoBehaviour
 
     void Hit()
     {
+        EffectManager.Instance.SpawnSmallExplosion(transform.position);
         CancelInvoke();
         Destroy(gameObject);
     }
 
     void Update()
     {
-        Quaternion targetRotation = Quaternion.LookRotation(target.position - transform.position);
-        transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * homingSpeed);
+        if (target)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(target.position - transform.position);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, Time.deltaTime * homingSpeed);
+        }
 
         speed += speedIncrease * Time.deltaTime;
         speed = Mathf.Min(speed, maxSpeed);
@@ -36,7 +40,7 @@ public class Rocket : MonoBehaviour
         {
             if (hit.transform.tag != "Untagged")
             {
-                hit.transform.SendMessage("OnHit", SendMessageOptions.DontRequireReceiver);
+                hit.transform.SendMessage("OnHit", 5, SendMessageOptions.DontRequireReceiver);
             }
             Hit();
         }

@@ -7,7 +7,8 @@ public class Explosion : MonoBehaviour
     [SerializeField] GameObject fragment;
     [SerializeField] int fragmentCount = 10;
     [SerializeField] float force = 100.0f;
-    [SerializeField] float repeatTime = 0.0f;
+    [SerializeField] float time = 0.0f;
+    [SerializeField] bool repeat = true;
 
     List<GameObject> fragments = new List<GameObject>();
 
@@ -18,7 +19,7 @@ public class Explosion : MonoBehaviour
             fragments[i].transform.localPosition = Vector3.zero;
             Rigidbody rigidbody = fragments[i].GetComponent<Rigidbody>();
             rigidbody.velocity = Vector3.zero;
-            rigidbody.AddForce((Vector3.up * 2.0f + Random.onUnitSphere) * force);
+            rigidbody.AddForce(Random.onUnitSphere * force);
             rigidbody.AddTorque(Random.onUnitSphere * force);
         }
     }
@@ -31,14 +32,23 @@ public class Explosion : MonoBehaviour
         }
 
         Explode();
-        if (repeatTime > 0.0f)
+        if (repeat)
         {
-            InvokeRepeating("Explode", repeatTime, repeatTime);
+            InvokeRepeating("Explode", time, time);
+        }
+        else
+        {
+            Invoke("Kill", time);
         }
     }
 
     private void OnDisable()
     {
         CancelInvoke("Explode");
+    }
+
+    void Kill()
+    {
+        Destroy(gameObject);
     }
 }
