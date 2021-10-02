@@ -259,17 +259,17 @@ public class Player : MonoBehaviour
             if (other.transform.name == "Turbo")
             {
                 isTurboUnlocked = true;
-                Debug.Log("Turbo aquired!");
+                Debug.Log("Turbo acquired!");
             }
             else if (other.transform.name == "Grab")
             {
                 isGrabUnlocked = true;
-                Debug.Log("Grab aquired!");
+                Debug.Log("Grab acquired!");
             }
             else if (other.transform.name == "Rocket")
             {
                 isRocketUnlocked = true;
-                Debug.Log("Rocket aquired!");
+                Debug.Log("Rocket acquired!");
             }
             Destroy(other.gameObject);
         }
