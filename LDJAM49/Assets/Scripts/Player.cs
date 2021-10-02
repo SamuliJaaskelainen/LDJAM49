@@ -31,6 +31,10 @@ public class Player : MonoBehaviour
     float hpRechargeRate = 1.0f;
     float hpRechargeDelay = 5.0f;
 
+    bool isTurboUnlocked = false;
+    bool isGrabUnlocked = false;
+    bool isRocketUnlocked = false;
+
     void Awake()
     {
         Instance = this;
@@ -44,7 +48,7 @@ public class Player : MonoBehaviour
             return;
 
         Vector3 movement = Vector3.zero;
-        bool isTurbo = Input.GetKey(KeyCode.LeftShift) && !isLockingTargets && grabJoint.connectedBody == null;
+        bool isTurbo = Input.GetKey(KeyCode.LeftShift) && !isLockingTargets && grabJoint.connectedBody == null && isTurboUnlocked;
         if (Input.GetKey(KeyCode.W))
         {
             movement += transform.forward * (isTurbo ? turboMultiplier : 1.0f);
@@ -129,7 +133,7 @@ public class Player : MonoBehaviour
                 GameObject.Instantiate(laserPrefab, barrel.position, barrel.rotation);
             }
 
-            if (Input.GetMouseButtonDown(1) && Time.time > rocketTimer)
+            if (Input.GetMouseButtonDown(1) && Time.time > rocketTimer && isRocketUnlocked)
             {
                 rocketTimer = Time.time + rocketRate;
                 lockedTargets.Clear();
@@ -144,7 +148,10 @@ public class Player : MonoBehaviour
                     for (int i = 0; i < lockedTargets.Count; ++i)
                     {
                         GameObject rocket = GameObject.Instantiate(rocketPrefab, barrel.position, barrel.rotation);
-                        rocket.GetComponent<Rocket>().target = lockedTargets[i].transform;
+                        if (lockedTargets[i])
+                        {
+                            rocket.GetComponent<Rocket>().target = lockedTargets[i].transform;
+                        }
                     }
                     lockedTargets.Clear();
                 }
@@ -182,7 +189,7 @@ public class Player : MonoBehaviour
                 }
             }
 
-            if (Input.GetKeyDown(KeyCode.F) && !isLockingTargets)
+            if (Input.GetKeyDown(KeyCode.F) && !isLockingTargets && isGrabUnlocked)
             {
                 RaycastHit hit;
                 if (Physics.Raycast(transform.position, transform.forward, out hit, 5.0f))
@@ -225,6 +232,7 @@ public class Player : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        Debug.Log("Take damage! " + damage);
         hpTimer = Time.time + hpRechargeDelay;
         health -= damage;
         WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
@@ -237,9 +245,33 @@ public class Player : MonoBehaviour
 
     public void Respawn()
     {
+        Debug.Log("Respawn");
         transform.position = lastCheckpoint;
         health = 10;
         WireframeRenderer.Instance.randomOffset = 0.0f;
         grabJoint.connectedBody = null;
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if (other.transform.tag == "PickUp")
+        {
+            if (other.transform.name == "Turbo")
+            {
+                isTurboUnlocked = true;
+                Debug.Log("Turbo aquired!");
+            }
+            else if (other.transform.name == "Grab")
+            {
+                isGrabUnlocked = true;
+                Debug.Log("Grab aquired!");
+            }
+            else if (other.transform.name == "Rocket")
+            {
+                isRocketUnlocked = true;
+                Debug.Log("Rocket aquired!");
+            }
+            Destroy(other.gameObject);
+        }
     }
 }
