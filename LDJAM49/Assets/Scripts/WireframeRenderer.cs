@@ -16,6 +16,7 @@ public class WireframeRenderer : MonoBehaviour
     public static WireframeRenderer Instance;
 
     [Header("Camera to render lines from. Use square aspect for improved preview.")]
+    [SerializeField] private bool useAudioRender = false;
     [SerializeField] private Camera renderCamera;
     [SerializeField] float randomOffset = 0.0f;
 
@@ -132,8 +133,18 @@ public class WireframeRenderer : MonoBehaviour
     private void Start()
     {
         // TODO: This won't work in standalone builds.
-        Debug.Log("Start scope rendering.");
-        renderDevice = new AudioRender.ScreenRenderDevice("Assets/Resources/ScopeBackground.jpg", true, true);
+        if (useAudioRender)
+        {
+            Debug.Log("Initializing AudioRenderDevice");
+            renderDevice = new AudioRender.AudioRenderDevice(new Vector2(-2.0f, -2.0f));
+            Debug.Log("AudioRenderDevice initialized");
+        }
+        else
+        {
+            Debug.Log("Initializing ScreenRenderDevice");
+            renderDevice = new AudioRender.ScreenRenderDevice("Assets/Resources/ScopeBackground.jpg", true, true);
+            Debug.Log("ScreenRenderDevice initialized");
+        }
     }
 
     private void OnDestroy()
@@ -145,6 +156,8 @@ public class WireframeRenderer : MonoBehaviour
 
     private void Update()
     {
+        Debug.Log("Starting WireframeRenderer update");
+
         renderDevice.Begin();
         renderDevice.SetIntensity(0.35f);
         renderDevice.SetPoint(Vector2.zero);
@@ -179,6 +192,8 @@ public class WireframeRenderer : MonoBehaviour
 
         renderDevice.WaitSync();
         renderDevice.Submit();
+
+        Debug.Log("Ending WireframeRenderer update");
     }
 
     private void NotifyCacheForUpdate(object sender = null, NotifyCollectionChangedEventArgs e = null)
