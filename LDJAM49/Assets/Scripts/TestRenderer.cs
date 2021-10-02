@@ -5,8 +5,10 @@ public class TestRenderer : MonoBehaviour
 {
     private void Start()
     {
+        renderDevice = new AudioRender.AudioRenderDevice(new Vector2(-2.0f, -2.0f));
+
         // TODO: This won't work in standalone builds.
-        renderDevice = new ScreenRenderDevice("Assets/Resources/ScopeBackground.jpg", true, true);
+        //renderDevice = new ScreenRenderDevice("Assets/Resources/ScopeBackground.jpg", true, true);
     }
 
     private void OnDestroy()

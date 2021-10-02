@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/TestSceneClipping.unity
+    guid: 8f37df48532b6fa44862a4f890c2bc2d
   m_configObjects: {}

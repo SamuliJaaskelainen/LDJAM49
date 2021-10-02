@@ -156,6 +156,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
+  renderType: 1
 --- !u!114 &158249515
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -277,6 +278,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
+  renderType: 1
 --- !u!114 &678168548
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -403,6 +405,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
+  renderType: 1
 --- !u!65 &750011632
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -591,6 +594,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
+  renderType: 1
 --- !u!1 &1344163317
 GameObject:
   m_ObjectHideFlags: 0
@@ -716,6 +720,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
+  renderType: 1
 --- !u!1 &1444677910
 GameObject:
   m_ObjectHideFlags: 0
@@ -749,6 +754,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
+  renderType: 1
 --- !u!114 &1444677912
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -871,7 +877,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ac2861ae79aae9140b7db69a0cdb5a10, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  useAudioRender: 1
   renderCamera: {fileID: 675085829}
+  randomOffset: 0
 --- !u!1001 &5161361267439828252
 PrefabInstance:
   m_ObjectHideFlags: 0

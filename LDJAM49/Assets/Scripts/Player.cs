@@ -5,16 +5,21 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class Player : MonoBehaviour
 {
+    public static Player Instance;
+    public static float turnSpeed = 350.0f;
+
     [SerializeField] Camera cam;
     [SerializeField] GameObject gameParent;
     [SerializeField] float speed = 10.0f;
     [SerializeField] float turboMultiplier = 2.0f;
-    [SerializeField] float turnSpeed = 100.0f;
     [SerializeField] float spinSpeed = 100.0f;
+    [SerializeField] ConfigurableJoint grabJoint;
+
     CharacterController characterController;
 
     void Awake()
     {
+        Instance = this;
         characterController = GetComponent<CharacterController>();
     }
 
@@ -86,9 +91,36 @@ public class Player : MonoBehaviour
             cam.fieldOfView = Mathf.Clamp(cam.fieldOfView - 100.0f * Time.deltaTime, 50.0f, 160.0f);
         }
 
-        if (Input.GetKeyDown(KeyCode.Tab))
+        if (Input.GetMouseButtonDown(1))
         {
-            MapManager.Instance.ToggleMap();
+            if (grabJoint.connectedBody)
+            {
+                Rigidbody grabbedObject = grabJoint.connectedBody;
+                grabJoint.connectedBody = null;
+                grabbedObject.AddForce(transform.forward * 40.0f, ForceMode.Impulse);
+            }
+            else
+            {
+                RaycastHit hit;
+                if (Physics.Raycast(transform.position, transform.forward, out hit, 5.0f))
+                {
+                    if (hit.transform.tag == "Phys")
+                    {
+                        Debug.DrawLine(transform.position, hit.point, Color.green, 1.0f);
+                        hit.transform.position = grabJoint.transform.position;
+                        grabJoint.connectedBody = hit.transform.GetComponent<Rigidbody>();
+                    }
+                    else
+                    {
+                        Debug.DrawLine(transform.position, hit.point, Color.red, 1.0f);
+                    }
+                }
+                else
+                {
+                    Debug.DrawLine(transform.position, transform.position + transform.forward * 5.0f, Color.red, 1.0f);
+                }
+            }
+
         }
     }
 }

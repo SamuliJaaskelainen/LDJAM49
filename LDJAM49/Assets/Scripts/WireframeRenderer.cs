@@ -160,8 +160,8 @@ public class WireframeRenderer : MonoBehaviour
 
         renderDevice.Begin();
         renderDevice.SetIntensity(0.35f);
-        renderDevice.SetPoint(Vector2.zero);
-        renderDevice.DrawCircle(0.5f);
+        // renderDevice.SetPoint(Vector2.zero);
+        // renderDevice.DrawCircle(0.5f);
 
         if (cacheRequiresUpdate)
         {
