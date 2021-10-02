@@ -324,7 +324,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   renderCamera: {fileID: 1741793781}
-  drawQuads: 1
+  randomOffset: 0
 --- !u!114 &1688218245
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -337,6 +337,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f8ab371140be9c468fae8c5ff5697ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  renderType: 2
 --- !u!1 &1725769601
 GameObject:
   m_ObjectHideFlags: 0

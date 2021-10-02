@@ -5,13 +5,32 @@ using UnityEngine;
 
 public class WireframeRenderer : MonoBehaviour
 {
+    public enum RenderType
+    {
+        Line,
+        Triangle,
+        Quad,
+        Skinned
+    }
+
     public static WireframeRenderer Instance;
 
     [Header("Camera to render lines from. Use square aspect for improved preview.")]
     [SerializeField] private Camera renderCamera;
-    [Header("Should we skip every 3rd line in triangles?")]
-    [SerializeField] private readonly bool drawQuads = false;
-    private ObservableCollection<MeshFilter> meshFilters = new ObservableCollection<MeshFilter>();
+    [SerializeField] float randomOffset = 0.0f;
+
+    private class StaticObject
+    {
+        public RenderType renderType;
+        public MeshFilter meshFilter;
+
+        public StaticObject(RenderType renderType, MeshFilter meshFilter)
+        {
+            this.renderType = renderType;
+            this.meshFilter = meshFilter;
+        }
+    }
+    private ObservableCollection<StaticObject> staticObjects = new ObservableCollection<StaticObject>();
 
     private class SkinnedObject
     {
@@ -24,7 +43,6 @@ public class WireframeRenderer : MonoBehaviour
             this.skinnedMeshFilter = skinnedMeshFilter;
         }
     }
-
     private ObservableCollection<SkinnedObject> skinnedObjects = new ObservableCollection<SkinnedObject>();
 
     private class MeshCache
@@ -33,16 +51,16 @@ public class WireframeRenderer : MonoBehaviour
         public int[] triangles { get; private set; }
         public Vector3[] vertices { get; private set; }
         public Transform transform { get; private set; }
-        public bool isSkinned { get; private set; }
+        public RenderType renderType { get; private set; }
         public int skinIndex { get; private set; }
 
-        public MeshCache(Mesh mesh, Transform transform, bool isSkinned = false, int skinIndex = 0)
+        public MeshCache(Mesh mesh, Transform transform, RenderType renderType, int skinIndex = 0)
         {
             this.mesh = mesh;
-            triangles = mesh.triangles;
             vertices = mesh.vertices;
+            triangles = mesh.triangles;
             this.transform = transform;
-            this.isSkinned = isSkinned;
+            this.renderType = renderType;
             this.skinIndex = skinIndex;
         }
 
@@ -58,9 +76,9 @@ public class WireframeRenderer : MonoBehaviour
     private bool cacheRequiresUpdate = false;
     private AudioRender.IRenderDevice renderDevice;
 
-    public void AddMesh(MeshFilter meshFilter)
+    public void AddMesh(RenderType renderType, MeshFilter meshFilter)
     {
-        meshFilters.Add(meshFilter);
+        staticObjects.Add(new StaticObject(renderType, meshFilter));
     }
 
     public void AddSkinnedMesh(SkinnedMeshRenderer skinnedMeshRenderer, MeshFilter meshFilter)
@@ -68,9 +86,16 @@ public class WireframeRenderer : MonoBehaviour
         skinnedObjects.Add(new SkinnedObject(skinnedMeshRenderer, meshFilter));
     }
 
-    public void RemoveMesh(MeshFilter meshFilter)
+    public void RemoveMesh(RenderType renderType, MeshFilter meshFilter)
     {
-        meshFilters.Remove(meshFilter);
+        foreach (StaticObject staticObject in staticObjects)
+        {
+            if (staticObject.renderType == renderType && staticObject.meshFilter == meshFilter)
+            {
+                staticObjects.Remove(staticObject);
+                return;
+            }
+        }
     }
 
     public void RemoveSkinnedMesh(SkinnedMeshRenderer skinnedMeshRenderer, MeshFilter meshFilter)
@@ -87,7 +112,7 @@ public class WireframeRenderer : MonoBehaviour
 
     public void ClearAllMeshes()
     {
-        meshFilters.Clear();
+        staticObjects.Clear();
         skinnedObjects.Clear();
     }
 
@@ -100,7 +125,7 @@ public class WireframeRenderer : MonoBehaviour
             renderCamera = Camera.main;
         }
 
-        meshFilters.CollectionChanged += NotifyCacheForUpdate;
+        staticObjects.CollectionChanged += NotifyCacheForUpdate;
         skinnedObjects.CollectionChanged += NotifyCacheForUpdate;
     }
 
@@ -132,18 +157,23 @@ public class WireframeRenderer : MonoBehaviour
 
         for (int i = 0; i < meshCache.Count; ++i)
         {
-            if (meshCache[i].isSkinned)
+            switch (meshCache[i].renderType)
             {
-                meshCache[i].Animate(skinnedObjects[meshCache[i].skinIndex].skinnedMeshRenderer);
-            }
+                case RenderType.Line:
+                    DrawLines(i);
+                    break;
 
-            if (drawQuads)
-            {
-                DrawQuads(i);
-            }
-            else
-            {
-                DrawTriangles(i);
+                case RenderType.Triangle:
+                    DrawTriangles(i);
+                    break;
+
+                case RenderType.Quad:
+                    DrawQuads(i);
+                    break;
+
+                case RenderType.Skinned:
+                    meshCache[i].Animate(skinnedObjects[meshCache[i].skinIndex].skinnedMeshRenderer);
+                    break;
             }
         }
 
@@ -160,36 +190,40 @@ public class WireframeRenderer : MonoBehaviour
     {
         Debug.Log("Update mesh cache.");
         meshCache.Clear();
-        foreach (MeshFilter meshFilter in meshFilters)
+        foreach (StaticObject staticObject in staticObjects)
         {
-            meshCache.Add(new MeshCache(meshFilter.mesh, meshFilter.transform));
+            meshCache.Add(new MeshCache(staticObject.meshFilter.mesh, staticObject.meshFilter.transform, staticObject.renderType));
         }
 
         for (int i = 0; i < skinnedObjects.Count; ++i)
         {
-            meshCache.Add(new MeshCache(skinnedObjects[i].skinnedMeshFilter.mesh, skinnedObjects[i].skinnedMeshFilter.transform, true, i));
+            meshCache.Add(new MeshCache(skinnedObjects[i].skinnedMeshFilter.mesh, skinnedObjects[i].skinnedMeshFilter.transform, RenderType.Skinned, i));
         }
         cacheRequiresUpdate = false;
+    }
+
+    private void DrawLines(int cacheIndex)
+    {
+        if (meshCache[cacheIndex].mesh && meshCache[cacheIndex].transform)
+        {
+            for (int i = 0; i < meshCache[cacheIndex].vertices.Length; i += 2)
+            {
+                DrawLine(cacheIndex, i + 0, i + 1);
+            }
+        }
     }
 
     private void DrawTriangles(int cacheIndex)
     {
         if (meshCache[cacheIndex].mesh && meshCache[cacheIndex].transform)
         {
-            for (int i = 0; i < meshCache[cacheIndex].triangles.Length; i += 6)
+            for (int i = 0; i < meshCache[cacheIndex].triangles.Length; i += 3)
             {
-                // if (TriangleFacesCamera(cacheIndex, i))
+                if (TriangleFacesCamera(cacheIndex, i))
                 {
                     DrawLine(cacheIndex, i + 0, i + 1);
                     DrawLine(cacheIndex, i + 1, i + 2);
                     DrawLine(cacheIndex, i + 2, i + 0);
-                }
-
-                // if (TriangleFacesCamera(cacheIndex, i + 3))
-                {
-                    DrawLine(cacheIndex, i + 3, i + 4);
-                    DrawLine(cacheIndex, i + 4, i + 5);
-                    DrawLine(cacheIndex, i + 5, i + 3);
                 }
             }
         }
@@ -201,13 +235,13 @@ public class WireframeRenderer : MonoBehaviour
         {
             for (int i = 0; i < meshCache[cacheIndex].triangles.Length; i += 6)
             {
-                // if (TriangleFacesCamera(cacheIndex, i))
+                if (TriangleFacesCamera(cacheIndex, i))
                 {
                     DrawLine(cacheIndex, i + 0, i + 1);
                     DrawLine(cacheIndex, i + 1, i + 2);
                 }
 
-                // if (TriangleFacesCamera(cacheIndex, i + 3))
+                if (TriangleFacesCamera(cacheIndex, i + 3))
                 {
                     DrawLine(cacheIndex, i + 4, i + 5);
                     DrawLine(cacheIndex, i + 5, i + 3);
@@ -218,8 +252,9 @@ public class WireframeRenderer : MonoBehaviour
 
     private Vector4 GetClipPoint(int cacheIndex, int triangleListIdx)
     {
+        Vector3 offset = Random.onUnitSphere * randomOffset;
         Vector3 localPoint = meshCache[cacheIndex].vertices[meshCache[cacheIndex].triangles[triangleListIdx]];
-        Vector3 worldPoint = meshCache[cacheIndex].transform.TransformPoint(localPoint);
+        Vector3 worldPoint = meshCache[cacheIndex].transform.TransformPoint(localPoint) + offset;
         Vector4 clipPoint = renderCamera.projectionMatrix * renderCamera.worldToCameraMatrix * new Vector4(worldPoint.x, worldPoint.y, worldPoint.z, 1.0f);
         return clipPoint;
     }

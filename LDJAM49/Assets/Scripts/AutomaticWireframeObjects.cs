@@ -2,6 +2,8 @@ using UnityEngine;
 
 public class AutomaticWireframeObjects : MonoBehaviour
 {
+    [SerializeField] WireframeRenderer.RenderType renderType;
+
     void Start()
     {
         if (WireframeRenderer.Instance)
@@ -12,6 +14,7 @@ public class AutomaticWireframeObjects : MonoBehaviour
                 if (!meshFilter.gameObject.GetComponent<WireframeObject>())
                 {
                     meshFilter.gameObject.AddComponent<WireframeObject>();
+                    meshFilter.gameObject.GetComponent<WireframeObject>().ChangeRenderType(renderType);
                 }
             }
         }
