@@ -76,6 +76,8 @@ public class WireframeRenderer : MonoBehaviour
     private List<MeshCache> meshCache = new List<MeshCache>();
     private bool cacheRequiresUpdate = false;
     private AudioRender.IRenderDevice renderDevice;
+    private Matrix4x4 projectionMatrix;
+    private Matrix4x4 frameMatrix;
 
     public void AddMesh(RenderType renderType, MeshFilter meshFilter)
     {
@@ -124,6 +126,7 @@ public class WireframeRenderer : MonoBehaviour
         if (!renderCamera)
         {
             renderCamera = Camera.main;
+            projectionMatrix = renderCamera.projectionMatrix;
         }
 
         staticObjects.CollectionChanged += NotifyCacheForUpdate;
@@ -167,6 +170,8 @@ public class WireframeRenderer : MonoBehaviour
         {
             UpdateCache();
         }
+
+        frameMatrix = projectionMatrix * renderCamera.worldToCameraMatrix;
 
         for (int i = 0; i < meshCache.Count; ++i)
         {
@@ -270,7 +275,7 @@ public class WireframeRenderer : MonoBehaviour
         Vector3 offset = Random.onUnitSphere * randomOffset;
         Vector3 localPoint = meshCache[cacheIndex].vertices[meshCache[cacheIndex].triangles[triangleListIdx]];
         Vector3 worldPoint = meshCache[cacheIndex].transform.TransformPoint(localPoint) + offset;
-        Vector4 clipPoint = renderCamera.projectionMatrix * renderCamera.worldToCameraMatrix * new Vector4(worldPoint.x, worldPoint.y, worldPoint.z, 1.0f);
+        Vector4 clipPoint = frameMatrix * new Vector4(worldPoint.x, worldPoint.y, worldPoint.z, 1.0f);
         return clipPoint;
     }
 
