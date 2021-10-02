@@ -75,12 +75,14 @@ public class MapManager : MonoBehaviour
 
     public void ShowMap()
     {
+        Time.timeScale = 0.0f;
         mapParent.SetActive(true);
         gameParent.SetActive(false);
     }
 
     public void HideMap()
     {
+        Time.timeScale = 1.0f;
         mapParent.SetActive(false);
         gameParent.SetActive(true);
     }

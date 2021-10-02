@@ -156,7 +156,7 @@ public class WireframeRenderer : MonoBehaviour
 
     private void Update()
     {
-        Debug.Log("Starting WireframeRenderer update");
+        //Debug.Log("Starting WireframeRenderer update");
 
         renderDevice.Begin();
         renderDevice.SetIntensity(0.35f);
@@ -193,7 +193,7 @@ public class WireframeRenderer : MonoBehaviour
         renderDevice.WaitSync();
         renderDevice.Submit();
 
-        Debug.Log("Ending WireframeRenderer update");
+        //Debug.Log("Ending WireframeRenderer update");
     }
 
     private void NotifyCacheForUpdate(object sender = null, NotifyCollectionChangedEventArgs e = null)

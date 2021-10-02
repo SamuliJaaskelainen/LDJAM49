@@ -14,8 +14,13 @@ public class Player : MonoBehaviour
     [SerializeField] float turboMultiplier = 2.0f;
     [SerializeField] float spinSpeed = 100.0f;
     [SerializeField] ConfigurableJoint grabJoint;
+    [SerializeField] Transform barrel;
+    [SerializeField] GameObject laserPrefab;
+    [SerializeField] GameObject rocketPrefab;
 
     CharacterController characterController;
+    bool isLockingTargets = false;
+    List<GameObject> lockedTargets = new List<GameObject>();
 
     void Awake()
     {
@@ -25,11 +30,11 @@ public class Player : MonoBehaviour
 
     void Update()
     {
-        if (!gameParent.activeInHierarchy)
+        if (!gameParent.activeInHierarchy || Cursor.lockState == CursorLockMode.None)
             return;
 
         Vector3 movement = Vector3.zero;
-        bool isTurbo = Input.GetKey(KeyCode.LeftShift);
+        bool isTurbo = Input.GetKey(KeyCode.LeftShift) && !isLockingTargets && grabJoint.connectedBody == null;
         if (Input.GetKey(KeyCode.W))
         {
             movement += transform.forward * (isTurbo ? turboMultiplier : 1.0f);
@@ -91,15 +96,77 @@ public class Player : MonoBehaviour
             cam.fieldOfView = Mathf.Clamp(cam.fieldOfView - 100.0f * Time.deltaTime, 50.0f, 160.0f);
         }
 
-        if (Input.GetMouseButtonDown(1))
+        if (grabJoint.connectedBody)
         {
-            if (grabJoint.connectedBody)
+            if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.F))
             {
-                Rigidbody grabbedObject = grabJoint.connectedBody;
-                grabJoint.connectedBody = null;
-                grabbedObject.AddForce(transform.forward * 40.0f, ForceMode.Impulse);
+                if (grabJoint.connectedBody)
+                {
+                    Rigidbody grabbedObject = grabJoint.connectedBody;
+                    grabJoint.connectedBody = null;
+                    if (!Input.GetKey(KeyCode.F))
+                    {
+                        grabbedObject.AddForce(transform.forward * 40.0f, ForceMode.Impulse);
+                    }
+                }
             }
-            else
+        }
+        else
+        {
+            if (Input.GetMouseButtonDown(0))
+            {
+                GameObject.Instantiate(laserPrefab, barrel.position, barrel.rotation);
+            }
+
+            if (Input.GetMouseButtonDown(1))
+            {
+                lockedTargets.Clear();
+                isLockingTargets = true;
+            }
+            else if (Input.GetMouseButtonUp(1) || lockedTargets.Count >= 3)
+            {
+                isLockingTargets = false;
+
+                if (lockedTargets.Count > 0)
+                {
+                    for (int i = 0; i < lockedTargets.Count; ++i)
+                    {
+                        GameObject rocket = GameObject.Instantiate(rocketPrefab, barrel.position, barrel.rotation);
+                        rocket.GetComponent<Rocket>().target = lockedTargets[i].transform;
+                    }
+                    lockedTargets.Clear();
+                }
+            }
+
+            if (isLockingTargets)
+            {
+                RaycastHit hit;
+                if (Physics.Raycast(transform.position, transform.forward, out hit, 20.0f))
+                {
+                    if (hit.transform.tag == "Enemy")
+                    {
+                        if (!lockedTargets.Contains(hit.transform.gameObject))
+                        {
+                            Debug.DrawLine(transform.position, hit.point, Color.green, 1.0f);
+                            lockedTargets.Add(hit.transform.gameObject);
+                        }
+                        else
+                        {
+                            Debug.DrawLine(transform.position, hit.point, Color.yellow);
+                        }
+                    }
+                    else
+                    {
+                        Debug.DrawLine(transform.position, hit.point, Color.red);
+                    }
+                }
+                else
+                {
+                    Debug.DrawLine(transform.position, transform.position + transform.forward * 5.0f, Color.red);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.F) && !isLockingTargets)
             {
                 RaycastHit hit;
                 if (Physics.Raycast(transform.position, transform.forward, out hit, 5.0f))
@@ -120,7 +187,6 @@ public class Player : MonoBehaviour
                     Debug.DrawLine(transform.position, transform.position + transform.forward * 5.0f, Color.red, 1.0f);
                 }
             }
-
         }
     }
 }
