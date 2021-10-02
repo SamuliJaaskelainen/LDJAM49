@@ -9,6 +9,9 @@ public class WireframeObject : MonoBehaviour
     [Header("Mesh render method. Ignore skinned type, it is automatic.")]
     [SerializeField] WireframeRenderer.RenderType renderType = WireframeRenderer.RenderType.Triangle;
 
+    [Header("Edges with angle below this threshold will not be rendered.")]
+    [SerializeField] float edgeAngleLimit = 0.0f;
+
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
 
@@ -23,23 +26,33 @@ public class WireframeObject : MonoBehaviour
             meshRenderer = GetComponent<MeshRenderer>();
         }
 
+        AddToRenderer();
+    }
+
+    private void OnDisable()
+    {
+        RemoveFromRenderer();
+    }
+
+    private void AddToRenderer()
+    {
         if (skinnedMeshRenderer)
         {
             if (WireframeRenderer.Instance)
             {
-                WireframeRenderer.Instance.AddSkinnedMesh(skinnedMeshRenderer, meshFilter);
+                WireframeRenderer.Instance.AddSkinnedMesh(skinnedMeshRenderer, meshFilter, edgeAngleLimit);
             }
         }
         else
         {
             if (WireframeRenderer.Instance)
             {
-                WireframeRenderer.Instance.AddMesh(renderType, meshFilter, meshRenderer);
+                WireframeRenderer.Instance.AddMesh(renderType, meshFilter, meshRenderer, edgeAngleLimit);
             }
         }
     }
 
-    private void OnDisable()
+    private void RemoveFromRenderer()
     {
         if (skinnedMeshRenderer)
         {
@@ -57,21 +70,17 @@ public class WireframeObject : MonoBehaviour
         }
     }
 
-    public void ChangeRenderType(WireframeRenderer.RenderType newRenderType)
+    public void ChangeRenderType(WireframeRenderer.RenderType newRenderType, float edgeAngleLimit)
     {
+        this.edgeAngleLimit = edgeAngleLimit;
+
+        RemoveFromRenderer();
+
         if (!skinnedMeshRenderer)
         {
-            if (WireframeRenderer.Instance)
-            {
-                WireframeRenderer.Instance.RemoveMesh(renderType, meshFilter);
-            }
-
             renderType = newRenderType;
-
-            if (WireframeRenderer.Instance)
-            {
-                WireframeRenderer.Instance.AddMesh(renderType, meshFilter, meshRenderer);
-            }
         }
+
+        AddToRenderer();
     }
 }

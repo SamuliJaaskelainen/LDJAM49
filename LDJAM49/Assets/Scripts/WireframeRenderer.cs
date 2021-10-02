@@ -22,15 +22,25 @@ public class WireframeRenderer : MonoBehaviour
     [SerializeField] private Camera renderCamera;
     public float randomOffset = 0.0f;
     [SerializeField] private float intensity = 0.35f;
-    [SerializeField] private float edgeAngleLimit = 0.0f;
 
-    private class StaticObject
+    private class RenderObject
+    {
+        public float edgeAngleLimit { get; private set; }
+
+        public RenderObject(float edgeAngleLimit)
+        {
+            this.edgeAngleLimit = edgeAngleLimit;
+        }
+    }
+
+    private class StaticObject : RenderObject
     {
         public RenderType renderType;
         public MeshFilter meshFilter;
         public MeshRenderer meshRenderer; // Optional, used for occlusion culling
 
-        public StaticObject(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer)
+        public StaticObject(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer, float edgeAngleLimit)
+            : base(edgeAngleLimit)
         {
             this.renderType = renderType;
             this.meshFilter = meshFilter;
@@ -39,12 +49,13 @@ public class WireframeRenderer : MonoBehaviour
     }
     private ObservableCollection<StaticObject> staticObjects = new ObservableCollection<StaticObject>();
 
-    private class SkinnedObject
+    private class SkinnedObject : RenderObject
     {
         public SkinnedMeshRenderer skinnedMeshRenderer;
         public MeshFilter skinnedMeshFilter;
 
-        public SkinnedObject(SkinnedMeshRenderer skinnedMeshRenderer, MeshFilter skinnedMeshFilter)
+        public SkinnedObject(SkinnedMeshRenderer skinnedMeshRenderer, MeshFilter skinnedMeshFilter, float edgeAngleLimit)
+            : base(edgeAngleLimit)
         {
             this.skinnedMeshRenderer = skinnedMeshRenderer;
             this.skinnedMeshFilter = skinnedMeshFilter;
@@ -141,8 +152,9 @@ public class WireframeRenderer : MonoBehaviour
         public RenderType renderType { get; private set; }
         public int skinIndex { get; private set; }
         public EdgeCache edgeCache { get; private set; }
+        public float edgeAngleLimit { get; private set; }
 
-        public MeshCache(Mesh mesh, Transform transform, RenderType renderType, int skinIndex = 0)
+        public MeshCache(Mesh mesh, Transform transform, RenderType renderType, int skinIndex = 0, float edgeAngleLimit = 0.0f)
         {
             this.mesh = mesh;
             vertices = mesh.vertices;
@@ -160,7 +172,7 @@ public class WireframeRenderer : MonoBehaviour
             }
             edgeCache.GenerateEdgeAngles(vertices, triangles);
 
-            Debug.LogFormat("New MeshCache with {0} vertices", vertices.Length);
+            // Debug.LogFormat("New MeshCache with {0} vertices", vertices.Length);
         }
 
         public void Animate(SkinnedMeshRenderer skinnedMeshRenderer)
@@ -177,14 +189,14 @@ public class WireframeRenderer : MonoBehaviour
     private Matrix4x4 projectionMatrix;
     private Matrix4x4 frameMatrix;
 
-    public void AddMesh(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer)
+    public void AddMesh(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer, float edgeAngleLimit)
     {
-        staticObjects.Add(new StaticObject(renderType, meshFilter, meshRenderer));
+        staticObjects.Add(new StaticObject(renderType, meshFilter, meshRenderer, edgeAngleLimit));
     }
 
-    public void AddSkinnedMesh(SkinnedMeshRenderer skinnedMeshRenderer, MeshFilter meshFilter)
+    public void AddSkinnedMesh(SkinnedMeshRenderer skinnedMeshRenderer, MeshFilter meshFilter, float edgeAngleLimit)
     {
-        skinnedObjects.Add(new SkinnedObject(skinnedMeshRenderer, meshFilter));
+        skinnedObjects.Add(new SkinnedObject(skinnedMeshRenderer, meshFilter, edgeAngleLimit));
     }
 
     public void RemoveMesh(RenderType renderType, MeshFilter meshFilter)
@@ -311,12 +323,12 @@ public class WireframeRenderer : MonoBehaviour
 
         foreach (StaticObject staticObject in staticObjects)
         {
-            meshCaches.Add(new MeshCache(staticObject.meshFilter.mesh, staticObject.meshFilter.transform, staticObject.renderType));
+            meshCaches.Add(new MeshCache(staticObject.meshFilter.mesh, staticObject.meshFilter.transform, staticObject.renderType, edgeAngleLimit: staticObject.edgeAngleLimit));
         }
 
         for (int i = 0; i < skinnedObjects.Count; ++i)
         {
-            meshCaches.Add(new MeshCache(skinnedObjects[i].skinnedMeshFilter.mesh, skinnedObjects[i].skinnedMeshFilter.transform, RenderType.Skinned, i));
+            meshCaches.Add(new MeshCache(skinnedObjects[i].skinnedMeshFilter.mesh, skinnedObjects[i].skinnedMeshFilter.transform, RenderType.Skinned, i, edgeAngleLimit: skinnedObjects[i].edgeAngleLimit));
         }
         cacheRequiresUpdate = false;
     }
@@ -348,15 +360,15 @@ public class WireframeRenderer : MonoBehaviour
         {
             if (TriangleFacesCamera(cacheIndex, i))
             {
-                // if(meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i], meshCache.triangles[i + 1]) >= edgeAngleLimit)
+                if(meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i], meshCache.triangles[i + 1]) >= meshCache.edgeAngleLimit)
                 {
                     DrawLine(cacheIndex, i + 0, i + 1);
                 }
-                // if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i + 1], meshCache.triangles[i + 2]) >= edgeAngleLimit)
+                if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i + 1], meshCache.triangles[i + 2]) >= meshCache.edgeAngleLimit)
                 {
                     DrawLine(cacheIndex, i + 1, i + 2);
                 }
-                // if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i + 2], meshCache.triangles[i + 0]) >= edgeAngleLimit)
+                if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i + 2], meshCache.triangles[i + 0]) >= meshCache.edgeAngleLimit)
                 {
                     DrawLine(cacheIndex, i + 2, i + 0);
                 }

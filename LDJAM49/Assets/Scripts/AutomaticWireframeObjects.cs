@@ -3,6 +3,7 @@ using UnityEngine;
 public class AutomaticWireframeObjects : MonoBehaviour
 {
     [SerializeField] WireframeRenderer.RenderType renderType;
+    [SerializeField] float edgeAngleLimit;
 
     void Start()
     {
@@ -13,8 +14,8 @@ public class AutomaticWireframeObjects : MonoBehaviour
             {
                 if (!meshFilter.gameObject.GetComponent<WireframeObject>())
                 {
-                    meshFilter.gameObject.AddComponent<WireframeObject>();
-                    meshFilter.gameObject.GetComponent<WireframeObject>().ChangeRenderType(renderType);
+                    var wireFrameObject = meshFilter.gameObject.AddComponent<WireframeObject>();
+                    wireFrameObject.ChangeRenderType(renderType, edgeAngleLimit);
                 }
             }
         }
