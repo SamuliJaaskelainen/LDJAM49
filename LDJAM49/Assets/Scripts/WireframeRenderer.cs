@@ -165,6 +165,7 @@ public class WireframeRenderer : MonoBehaviour
             this.renderType = renderType;
             this.skinIndex = skinIndex;
             this.edgeCache = new EdgeCache(vertices.Length);
+            this.edgeAngleLimit = edgeAngleLimit;
 
             for (int i = 0; i < triangles.Length; i += 3)
             {
