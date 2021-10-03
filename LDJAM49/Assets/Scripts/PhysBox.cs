@@ -21,6 +21,8 @@ public class PhysBox : MonoBehaviour
 
     private void OnCollisionEnter(Collision other)
     {
+        // AUDIO: Generic collision
+
         if (other.transform.tag == "Door" && thrown)
         {
             other.transform.GetComponent<Door>().Open();

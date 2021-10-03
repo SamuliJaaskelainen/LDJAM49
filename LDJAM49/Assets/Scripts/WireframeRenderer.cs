@@ -156,7 +156,6 @@ public class WireframeRenderer : MonoBehaviour
         public int[] triangles { get; private set; }
         public float3[] vertices { get; private set; }
         public Transform transform { get; private set; }
-        public float4x4 localToWorldMatrix { get; private set; }
         public RenderType renderType { get; private set; }
         public int skinIndex { get; private set; }
         public EdgeCache edgeCache { get; private set; }
@@ -174,7 +173,6 @@ public class WireframeRenderer : MonoBehaviour
             }
             triangles = mesh.triangles;
             this.transform = transform;
-            this.localToWorldMatrix = transform.localToWorldMatrix;
             this.renderType = renderType;
             this.skinIndex = skinIndex;
             this.edgeCache = new EdgeCache(vertices.Length);
@@ -191,7 +189,7 @@ public class WireframeRenderer : MonoBehaviour
             nativeVerticesLocal = new NativeArray<float3>(vertices.Length, Allocator.Persistent);
             nativeVerticesClip = new NativeArray<float4>(vertices.Length, Allocator.Persistent);
 
-            for(int i = 0; i < vertices.Length; ++i)
+            for (int i = 0; i < vertices.Length; ++i)
             {
                 nativeVerticesLocal[i] = vertices[i];
             }
@@ -356,7 +354,7 @@ public class WireframeRenderer : MonoBehaviour
         var jobHandles = new NativeArray<JobHandle>(meshCaches.Count, Allocator.Temp);
         for (int i = 0; i < meshCaches.Count; ++i)
         {
-            float4x4 localToClip = math.mul(renderCamera.projectionMatrix, math.mul(renderCamera.worldToCameraMatrix, meshCaches[i].localToWorldMatrix));
+            float4x4 localToClip = math.mul(renderCamera.projectionMatrix, math.mul(renderCamera.worldToCameraMatrix, meshCaches[i].transform.localToWorldMatrix));
             jobHandles[i] = meshCaches[i].UpdateClipVertices(localToClip);
         }
         JobHandle.ScheduleBatchedJobs();
@@ -399,7 +397,7 @@ public class WireframeRenderer : MonoBehaviour
     private void UpdateCache()
     {
         Debug.Log("Update mesh cache.");
-        for(int i = 0; i < meshCaches.Count; ++i)
+        for (int i = 0; i < meshCaches.Count; ++i)
         {
             meshCaches[i].Dispose();
         }

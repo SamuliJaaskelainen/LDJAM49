@@ -16,6 +16,7 @@ public class MapManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        HideMap();
     }
 
     void Update()
@@ -41,28 +42,28 @@ public class MapManager : MonoBehaviour
             }
             if (Input.GetKey(KeyCode.Space))
             {
-                movement += Vector3.up;
+                movement -= Vector3.up;
             }
             else if (Input.GetKey(KeyCode.LeftControl))
             {
-                movement -= Vector3.up;
+                movement += Vector3.up;
             }
-            mapParent.transform.Translate(movement * 10.0f * Time.deltaTime, Space.World);
+            mapParent.transform.Translate(movement * 10.0f * Time.unscaledDeltaTime, Space.World);
 
-            float horizontal = Input.GetAxis("Mouse X") * Player.turnSpeed / 4.0f * Time.deltaTime;
-            float vertical = -Input.GetAxis("Mouse Y") * Player.turnSpeed / 4.0f * Time.deltaTime;
-            mapParent.transform.Rotate(Vector3.up, horizontal, Space.World);
-            mapParent.transform.Rotate(Vector3.right, vertical, Space.World);
+            float horizontal = Input.GetAxis("Mouse X") * Player.turnSpeed / 4.0f * Time.unscaledDeltaTime;
+            float vertical = -Input.GetAxis("Mouse Y") * Player.turnSpeed / 4.0f * Time.unscaledDeltaTime;
+            mapParent.transform.Rotate(Player.Instance.transform.up, horizontal, Space.World);
+            mapParent.transform.Rotate(Player.Instance.transform.right, vertical, Space.World);
 
-            float zoom = Input.mouseScrollDelta.y * 0.1f;
-            zoomLevel = Mathf.Clamp(zoomLevel + zoom, 0.25f, 3.0f);
-            mapParent.transform.localScale = Vector3.one * zoomLevel;
+            //float zoom = Input.mouseScrollDelta.y * 0.1f;
+            //zoomLevel = Mathf.Clamp(zoomLevel + zoom, 0.25f, 3.0f);
+            //mapParent.transform.localScale = Vector3.one * zoomLevel;
 
-            mapPlayer.localPosition = Player.Instance.transform.position * 0.2f + Vector3.forward * 5.0f;
+            mapPlayer.localPosition = Player.Instance.transform.position * 0.1f + Vector3.forward;
             mapPlayer.localRotation = Player.Instance.transform.rotation;
-            if (playerBlinkTimer < Time.time)
+            if (playerBlinkTimer < Time.unscaledTime)
             {
-                playerBlinkTimer = Time.time + playerBlinkDelay;
+                playerBlinkTimer = Time.unscaledTime + playerBlinkDelay;
                 mapPlayer.gameObject.SetActive(!mapPlayer.gameObject.activeSelf);
             }
         }
@@ -75,6 +76,7 @@ public class MapManager : MonoBehaviour
 
     public void ShowMap()
     {
+        // AUDIO: Open map
         Time.timeScale = 0.0f;
         mapParent.SetActive(true);
         gameParent.SetActive(false);
@@ -82,6 +84,7 @@ public class MapManager : MonoBehaviour
 
     public void HideMap()
     {
+        // AUDIO: Close map
         Time.timeScale = 1.0f;
         mapParent.SetActive(false);
         gameParent.SetActive(true);

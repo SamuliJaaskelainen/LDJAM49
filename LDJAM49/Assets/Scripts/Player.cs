@@ -53,10 +53,12 @@ public class Player : MonoBehaviour
         movement += transform.forward * (isTurbo ? turboMultiplier : 0.0f);
         if (Input.GetKeyDown(KeyCode.LeftShift) && isTurbo)
         {
+            // AUDIO: Turbo boost start
             CameraShake.Instance.Shake(0.3f);
         }
         if (Input.GetKey(KeyCode.W) && !isTurbo)
         {
+            // AUDIO: Turbo boost loop
             movement += transform.forward;
         }
         else if (Input.GetKey(KeyCode.S))
@@ -126,9 +128,14 @@ public class Player : MonoBehaviour
                     Rigidbody grabbedObject = grabJoint.connectedBody;
                     if (!Input.GetKey(KeyCode.F))
                     {
+                        // AUDIO: Grab throw
                         CameraShake.Instance.Shake(0.3f);
                         grabJoint.connectedBody.transform.GetComponent<PhysBox>().thrown = true;
                         grabbedObject.AddForce(transform.forward * 40.0f, ForceMode.Impulse);
+                    }
+                    else
+                    {
+                        // AUDIO: Grab drop
                     }
                     grabJoint.connectedBody = null;
                 }
@@ -138,12 +145,14 @@ public class Player : MonoBehaviour
         {
             if (Input.GetMouseButton(0) && Time.time > laserTimer)
             {
+                // AUDIO: Shoot laser
                 laserTimer = Time.time + laserRate;
                 GameObject.Instantiate(laserPrefab, barrel.position, barrel.rotation);
             }
 
             if (Input.GetMouseButtonDown(1) && Time.time > rocketTimer && isRocketUnlocked)
             {
+                // AUDIO: Start locking
                 rocketTimer = Time.time + rocketRate;
                 lockedTargets.Clear();
                 isLockingTargets = true;
@@ -152,6 +161,7 @@ public class Player : MonoBehaviour
             {
                 isLockingTargets = false;
 
+                // AUDIO: Shoot rocket
                 if (lockedTargets.Count > 0)
                 {
                     for (int i = 0; i < lockedTargets.Count; ++i)
@@ -173,12 +183,13 @@ public class Player : MonoBehaviour
             if (isLockingTargets)
             {
                 RaycastHit hit;
-                if (Physics.SphereCast(transform.position, 0.2f, transform.forward, out hit, 20.0f))
+                if (Physics.SphereCast(transform.position, 0.2f, transform.forward, out hit, cam.farClipPlane))
                 {
                     if (hit.transform.tag == "Enemy")
                     {
                         if (!lockedTargets.Contains(hit.transform.gameObject))
                         {
+                            // AUDIO: Lock target
                             Debug.DrawLine(transform.position, hit.point, Color.green, 1.0f);
                             lockedTargets.Add(hit.transform.gameObject);
                         }
@@ -205,19 +216,27 @@ public class Player : MonoBehaviour
                 {
                     if (hit.transform.tag == "Phys")
                     {
+                        // AUDIO: Grab start
                         Debug.DrawLine(transform.position, hit.point, Color.green, 1.0f);
                         hit.transform.position = grabJoint.transform.position;
                         grabJoint.connectedBody = hit.transform.GetComponent<Rigidbody>();
                     }
                     else
                     {
+                        // AUDIO: Grab miss
                         Debug.DrawLine(transform.position, hit.point, Color.red, 1.0f);
                     }
                 }
                 else
                 {
+                    // AUDIO: Grab miss
                     Debug.DrawLine(transform.position, transform.position + transform.forward * 5.0f, Color.red, 1.0f);
                 }
+            }
+
+            if (grabJoint.connectedBody)
+            {
+                // AUDIO: Grab loop
             }
         }
 
@@ -228,6 +247,7 @@ public class Player : MonoBehaviour
 
         if (Time.time > hpTimer && health < 10)
         {
+            // AUDIO: Heal
             hpTimer = Time.time + hpRechargeRate;
             health++;
             WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
@@ -241,6 +261,7 @@ public class Player : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        // AUDIO: Player take damage
         Debug.Log("Take damage! " + damage);
         CameraShake.Instance.Shake(0.5f);
         hpTimer = Time.time + hpRechargeDelay;
@@ -255,6 +276,7 @@ public class Player : MonoBehaviour
 
     public void Respawn()
     {
+        // AUDIO: Player respawn
         Debug.Log("Respawn");
         transform.position = lastCheckpoint;
         health = 10;
@@ -268,18 +290,21 @@ public class Player : MonoBehaviour
         {
             if (other.transform.name == "Turbo")
             {
+                // AUDIO: Pickup turbo
                 lastCheckpoint = transform.position;
                 isTurboUnlocked = true;
                 Debug.Log("Turbo acquired!");
             }
             else if (other.transform.name == "Grab")
             {
+                // AUDIO: Pickup grab
                 lastCheckpoint = transform.position;
                 isGrabUnlocked = true;
                 Debug.Log("Grab acquired!");
             }
             else if (other.transform.name == "Rocket")
             {
+                // AUDIO: Pickup rocket
                 lastCheckpoint = transform.position;
                 isRocketUnlocked = true;
                 Debug.Log("Rocket acquired!");

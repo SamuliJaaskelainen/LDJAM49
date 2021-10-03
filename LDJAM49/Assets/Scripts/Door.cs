@@ -6,6 +6,7 @@ public class Door : MonoBehaviour
 {
     public void Open()
     {
+        // AUDIO: Door open
         Destroy(gameObject);
     }
 }

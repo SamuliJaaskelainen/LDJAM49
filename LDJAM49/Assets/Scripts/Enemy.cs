@@ -30,6 +30,10 @@ public class Enemy : MonoBehaviour
             EffectManager.Instance.SpawnExplosion(transform.position);
             Destroy(gameObject);
         }
+        else
+        {
+            // AUDIO: Enemy takes damage
+        }
     }
 
     private void Update()
@@ -42,6 +46,7 @@ public class Enemy : MonoBehaviour
 
             if (Time.time > shootTimer)
             {
+                // AUDIO: Enemy shoot laser
                 shootTimer = Time.time + Random.Range(shootRateMin, shootRateMax);
                 Instantiate(bulletPrefab, transform.position, transform.rotation);
             }
