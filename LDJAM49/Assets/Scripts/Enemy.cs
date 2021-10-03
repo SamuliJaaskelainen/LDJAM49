@@ -55,7 +55,7 @@ public class Enemy : MonoBehaviour
             {
                 // AUDIO: Enemy shoot laser
                 shootTimer = Time.time + Random.Range(shootRateMin, shootRateMax);
-                Instantiate(bulletPrefab, transform.position, transform.rotation, gameParent);
+                Instantiate(bulletPrefab, transform.position, targetRotation, gameParent);
             }
 
             if (isMoving)
