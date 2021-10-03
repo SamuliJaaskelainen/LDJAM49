@@ -35,6 +35,8 @@ public class Player : MonoBehaviour
     bool firstMap = true;
     bool firstDamage = true;
     bool firstHeal = true;
+    float fpsTimer;
+    float fpsRate = 0.25f;
 
     [SerializeField] bool isTurboUnlocked = false;
     [SerializeField] bool isGrabUnlocked = false;
@@ -52,7 +54,7 @@ public class Player : MonoBehaviour
     [SerializeField] TMPro.TMP_Text hintText;
     [SerializeField] TMPro.TMP_Text sensitivityText;
     [SerializeField] TMPro.TMP_Text fovText;
-
+    [SerializeField] TMPro.TMP_Text fpsText;
 
     void Awake()
     {
@@ -65,6 +67,11 @@ public class Player : MonoBehaviour
 
     void Update()
     {
+        if (Time.time > fpsTimer)
+        {
+            fpsTimer = Time.time + fpsRate;
+            fpsText.text = (1.0f / Time.unscaledDeltaTime).ToString("f0");
+        }
         lockedMenu.SetActive(Cursor.lockState != CursorLockMode.None);
         unlockedMenu.SetActive(Cursor.lockState == CursorLockMode.None);
 
