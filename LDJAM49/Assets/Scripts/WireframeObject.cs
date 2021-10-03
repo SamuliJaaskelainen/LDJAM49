@@ -12,6 +12,20 @@ public class WireframeObject : MonoBehaviour
     [Header("Edges with angle below this threshold will not be rendered.")]
     [SerializeField] float edgeAngleLimit = 0.0f;
 
+#if UNITY_EDITOR
+    float lastEdgeAngleLimit;
+
+    void LateUpdate()
+    {
+        if (!Mathf.Approximately(lastEdgeAngleLimit, edgeAngleLimit))
+        {
+            Debug.Log("Forced angle limit update");
+            ChangeRenderType(renderType, edgeAngleLimit);
+        }
+        lastEdgeAngleLimit = edgeAngleLimit;
+    }
+#endif
+
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
 
