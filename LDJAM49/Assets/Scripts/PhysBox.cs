@@ -29,7 +29,7 @@ public class PhysBox : MonoBehaviour
         }
         if (other.transform.tag == "Enemy" && thrown)
         {
-            other.transform.GetComponent<Enemy>().OnHit(2);
+            other.transform.GetComponent<Enemy>().OnHit(5);
         }
         thrown = false;
     }

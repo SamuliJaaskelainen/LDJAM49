@@ -31,10 +31,24 @@ public class Player : MonoBehaviour
     float hpTimer;
     float hpRechargeRate = 1.0f;
     float hpRechargeDelay = 5.0f;
+    bool firstDeath = true;
+    bool firstMap = true;
+    bool firstDamage = true;
+    bool firstHeal = true;
 
     [SerializeField] bool isTurboUnlocked = false;
     [SerializeField] bool isGrabUnlocked = false;
     [SerializeField] bool isRocketUnlocked = false;
+
+    [Header("Menu stuff")]
+    [SerializeField] GameObject lockedMenu;
+    [SerializeField] GameObject unlockedMenu;
+    [SerializeField] GameObject rocketKeyMenu;
+    [SerializeField] GameObject grabKeyMenu;
+    [SerializeField] GameObject turboKeyMenu;
+    [SerializeField] TMPro.TMP_Text hpText;
+    [SerializeField] TMPro.TMP_Text missionText;
+    [SerializeField] TMPro.TMP_Text hintText;
 
     void Awake()
     {
@@ -45,6 +59,9 @@ public class Player : MonoBehaviour
 
     void Update()
     {
+        lockedMenu.SetActive(Cursor.lockState != CursorLockMode.None);
+        unlockedMenu.SetActive(Cursor.lockState == CursorLockMode.None);
+
         if (!gameParent.activeInHierarchy || Cursor.lockState == CursorLockMode.None)
             return;
 
@@ -100,20 +117,20 @@ public class Player : MonoBehaviour
         }
         transform.Rotate(vertical, horizontal, tilt * spinSpeed * Time.deltaTime);
 
-        if (Input.GetKey(KeyCode.PageUp))
+        if (Input.GetKey(KeyCode.F1))
         {
             turnSpeed = Mathf.Clamp(turnSpeed + 1000.0f * Time.deltaTime, 10.0f, 1000.0f);
         }
-        else if (Input.GetKey(KeyCode.PageDown))
+        else if (Input.GetKey(KeyCode.F2))
         {
             turnSpeed = Mathf.Clamp(turnSpeed - 1000.0f * Time.deltaTime, 10.0f, 1000.0f);
         }
 
-        if (Input.GetKey(KeyCode.Home))
+        if (Input.GetKey(KeyCode.F3))
         {
             fov = Mathf.Clamp(fov + 100.0f * Time.deltaTime, 50.0f, 160.0f);
         }
-        else if (Input.GetKey(KeyCode.End))
+        else if (Input.GetKey(KeyCode.F4))
         {
             fov = Mathf.Clamp(fov - 100.0f * Time.deltaTime, 50.0f, 160.0f);
         }
@@ -251,6 +268,22 @@ public class Player : MonoBehaviour
             hpTimer = Time.time + hpRechargeRate;
             health++;
             WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
+            hpText.text = "Health: ";
+            for (int i = 0; i < health; ++i)
+            {
+                hpText.text += "|";
+            }
+            if (firstHeal)
+            {
+                hintText.text = "Hint: You will automatically heal after 10 seconds of safety";
+                firstHeal = false;
+            }
+        }
+
+        if (firstMap && Input.GetKeyDown(KeyCode.Tab))
+        {
+            hintText.text = "Hint: You are shown in the map as blinking point";
+            firstMap = false;
         }
     }
 
@@ -261,12 +294,23 @@ public class Player : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        if (firstDamage)
+        {
+            hintText.text = "Hint: Game rendering becomes more unstable the more damaged you are";
+            firstDamage = false;
+        }
+
         // AUDIO: Player take damage
         Debug.Log("Take damage! " + damage);
         CameraShake.Instance.Shake(0.5f);
         hpTimer = Time.time + hpRechargeDelay;
         health -= damage;
         WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
+        hpText.text = "Health: ";
+        for (int i = 0; i < health; ++i)
+        {
+            hpText.text += "|";
+        }
 
         if (health <= 0)
         {
@@ -278,8 +322,18 @@ public class Player : MonoBehaviour
     {
         // AUDIO: Player respawn
         Debug.Log("Respawn");
+        if (firstDeath)
+        {
+            hintText.text = "Hint: When you die, you do not lose progress";
+            firstDeath = false;
+        }
         transform.position = lastCheckpoint;
         health = 10;
+        hpText.text = "Health: ";
+        for (int i = 0; i < health; ++i)
+        {
+            hpText.text += "|";
+        }
         WireframeRenderer.Instance.randomOffset = 0.0f;
         grabJoint.connectedBody = null;
     }
@@ -293,6 +347,9 @@ public class Player : MonoBehaviour
                 // AUDIO: Pickup turbo
                 lastCheckpoint = transform.position;
                 isTurboUnlocked = true;
+                turboKeyMenu.SetActive(true);
+                hintText.text = "Hint: Hold SHIFT for turbo speed";
+                missionText.text = "Next objective: Find tractor beam";
                 Debug.Log("Turbo acquired!");
             }
             else if (other.transform.name == "Grab")
@@ -300,6 +357,9 @@ public class Player : MonoBehaviour
                 // AUDIO: Pickup grab
                 lastCheckpoint = transform.position;
                 isGrabUnlocked = true;
+                grabKeyMenu.SetActive(true);
+                hintText.text = "Hint: Throwing boxes does high damage and breaks doors";
+                missionText.text = "Next objective: Find rockets";
                 Debug.Log("Grab acquired!");
             }
             else if (other.transform.name == "Rocket")
@@ -307,7 +367,15 @@ public class Player : MonoBehaviour
                 // AUDIO: Pickup rocket
                 lastCheckpoint = transform.position;
                 isRocketUnlocked = true;
+                rocketKeyMenu.SetActive(true);
+                hintText.text = "Hint: Hold R. MOUSE to lock up to three targets with rockets";
+                missionText.text = "Next objective: Kill final boss";
                 Debug.Log("Rocket acquired!");
+            }
+            else if (other.transform.name == "HubTrigger")
+            {
+                missionText.text = "Next objective: Find turbo booster";
+                hintText.text = "Hint: New equipment will unlock new actions";
             }
             Destroy(other.gameObject);
         }
