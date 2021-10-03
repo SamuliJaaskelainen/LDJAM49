@@ -18,6 +18,16 @@
       },
       "url": "https://packages.unity.com"
     },
+    "com.unity.collections": {
+      "version": "1.0.0-pre.6",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.burst": "1.5.4",
+        "com.unity.test-framework": "1.1.22"
+      },
+      "url": "https://packages.unity.com"
+    },
     "com.unity.ext.nunit": {
       "version": "1.0.6",
       "depth": 1,
