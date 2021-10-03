@@ -22,6 +22,13 @@ public class Enemy : MonoBehaviour
     [SerializeField] float moveSpeedMin = 2.0f;
     [SerializeField] float moveSpeedMax = 3.0f;
 
+    Transform gameParent;
+
+    void Awake()
+    {
+        gameParent = GameObject.FindGameObjectWithTag("Game").transform;
+    }
+
     public void OnHit(int damage)
     {
         health -= damage;
@@ -48,7 +55,7 @@ public class Enemy : MonoBehaviour
             {
                 // AUDIO: Enemy shoot laser
                 shootTimer = Time.time + Random.Range(shootRateMin, shootRateMax);
-                Instantiate(bulletPrefab, transform.position, transform.rotation);
+                Instantiate(bulletPrefab, transform.position, transform.rotation, gameParent);
             }
 
             if (isMoving)

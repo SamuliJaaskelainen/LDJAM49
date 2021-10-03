@@ -41,6 +41,7 @@ public class Player : MonoBehaviour
     [SerializeField] bool isRocketUnlocked = false;
 
     [Header("Menu stuff")]
+    [SerializeField] GameObject menu;
     [SerializeField] GameObject lockedMenu;
     [SerializeField] GameObject unlockedMenu;
     [SerializeField] GameObject rocketKeyMenu;
@@ -49,12 +50,17 @@ public class Player : MonoBehaviour
     [SerializeField] TMPro.TMP_Text hpText;
     [SerializeField] TMPro.TMP_Text missionText;
     [SerializeField] TMPro.TMP_Text hintText;
+    [SerializeField] TMPro.TMP_Text sensitivityText;
+    [SerializeField] TMPro.TMP_Text fovText;
+
 
     void Awake()
     {
         Instance = this;
         characterController = GetComponent<CharacterController>();
         lastCheckpoint = transform.position;
+        sensitivityText.text = "Change mouse sensitivity (" + Mathf.FloorToInt(turnSpeed) + ")";
+        fovText.text = "Change field of view (" + Mathf.FloorToInt(fov) + ")";
     }
 
     void Update()
@@ -120,19 +126,23 @@ public class Player : MonoBehaviour
         if (Input.GetKey(KeyCode.F1))
         {
             turnSpeed = Mathf.Clamp(turnSpeed + 1000.0f * Time.deltaTime, 10.0f, 1000.0f);
+            sensitivityText.text = "Change mouse sensitivity (" + Mathf.FloorToInt(turnSpeed) + ")";
         }
         else if (Input.GetKey(KeyCode.F2))
         {
             turnSpeed = Mathf.Clamp(turnSpeed - 1000.0f * Time.deltaTime, 10.0f, 1000.0f);
+            sensitivityText.text = "Change mouse sensitivity (" + Mathf.FloorToInt(turnSpeed) + ")";
         }
 
         if (Input.GetKey(KeyCode.F3))
         {
             fov = Mathf.Clamp(fov + 100.0f * Time.deltaTime, 50.0f, 160.0f);
+            fovText.text = "Change field of view (" + Mathf.FloorToInt(fov) + ")";
         }
         else if (Input.GetKey(KeyCode.F4))
         {
             fov = Mathf.Clamp(fov - 100.0f * Time.deltaTime, 50.0f, 160.0f);
+            fovText.text = "Change field of view (" + Mathf.FloorToInt(fov) + ")";
         }
         cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, isTurbo ? fov * 1.2f : fov, Time.deltaTime * 10.0f);
 
@@ -153,6 +163,7 @@ public class Player : MonoBehaviour
                     else
                     {
                         // AUDIO: Grab drop
+                        CameraShake.Instance.Shake(0.1f);
                     }
                     grabJoint.connectedBody = null;
                 }
@@ -164,7 +175,7 @@ public class Player : MonoBehaviour
             {
                 // AUDIO: Shoot laser
                 laserTimer = Time.time + laserRate;
-                GameObject.Instantiate(laserPrefab, barrel.position, barrel.rotation);
+                GameObject.Instantiate(laserPrefab, barrel.position, barrel.rotation, gameParent.transform);
             }
 
             if (Input.GetMouseButtonDown(1) && Time.time > rocketTimer && isRocketUnlocked)
@@ -183,7 +194,7 @@ public class Player : MonoBehaviour
                 {
                     for (int i = 0; i < lockedTargets.Count; ++i)
                     {
-                        GameObject rocket = GameObject.Instantiate(rocketPrefab, barrel.position, barrel.rotation);
+                        GameObject rocket = GameObject.Instantiate(rocketPrefab, barrel.position, barrel.rotation, gameParent.transform);
                         if (lockedTargets[i])
                         {
                             rocket.GetComponent<Rocket>().target = lockedTargets[i].transform;
@@ -193,7 +204,7 @@ public class Player : MonoBehaviour
                 }
                 else
                 {
-                    GameObject rocket = GameObject.Instantiate(rocketPrefab, barrel.position, barrel.rotation);
+                    GameObject rocket = GameObject.Instantiate(rocketPrefab, barrel.position, barrel.rotation, gameParent.transform);
                 }
             }
 
@@ -228,6 +239,7 @@ public class Player : MonoBehaviour
 
             if (Input.GetKeyDown(KeyCode.F) && !isLockingTargets && isGrabUnlocked)
             {
+                CameraShake.Instance.Shake(0.15f);
                 RaycastHit hit;
                 if (Physics.Raycast(transform.position, transform.forward, out hit, 5.0f))
                 {
@@ -285,6 +297,11 @@ public class Player : MonoBehaviour
             hintText.text = "Hint: You are shown in the map as blinking point";
             firstMap = false;
         }
+
+        if (Input.GetKeyDown(KeyCode.U))
+        {
+            menu.SetActive(!menu.activeSelf);
+        }
     }
 
     public void OnHit(int damage)
@@ -296,7 +313,7 @@ public class Player : MonoBehaviour
     {
         if (firstDamage)
         {
-            hintText.text = "Hint: Game rendering becomes more unstable the more damaged you are";
+            hintText.text = "Hint: Game rendering becomes more unstable when you are damaged";
             firstDamage = false;
         }
 
@@ -368,7 +385,7 @@ public class Player : MonoBehaviour
                 lastCheckpoint = transform.position;
                 isRocketUnlocked = true;
                 rocketKeyMenu.SetActive(true);
-                hintText.text = "Hint: Hold R. MOUSE to lock up to three targets with rockets";
+                hintText.text = "Hint: Hold R. MOUSE to lock targets for rockets";
                 missionText.text = "Next objective: Kill final boss";
                 Debug.Log("Rocket acquired!");
             }

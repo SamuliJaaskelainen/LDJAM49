@@ -8,6 +8,7 @@ TagManager:
   - Enemy
   - PickUp
   - Door
+  - Game
   layers:
   - Default
   - TransparentFX
