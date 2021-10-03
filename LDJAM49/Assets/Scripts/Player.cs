@@ -398,6 +398,7 @@ public class Player : MonoBehaviour
             }
             else if (other.transform.name == "HubTrigger")
             {
+                lastCheckpoint = transform.position;
                 missionText.text = "Next objective: Find turbo booster";
                 hintText.text = "Hint: New equipment will unlock new actions";
             }

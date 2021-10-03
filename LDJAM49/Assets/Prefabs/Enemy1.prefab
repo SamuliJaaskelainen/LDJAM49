@@ -185,4 +185,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
   renderType: 1
-  edgeAngleLimit: 2
+  edgeAngleLimit: 10
