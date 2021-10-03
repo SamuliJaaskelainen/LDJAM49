@@ -10,7 +10,10 @@ public class ActivateOnDestory : MonoBehaviour
     {
         foreach (GameObject go in activateObjets)
         {
-            go.SetActive(true);
+            if (go)
+            {
+                go.SetActive(true);
+            }
         }
     }
 }
