@@ -3,7 +3,12 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Runtime.CompilerServices;
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Jobs;
+using Unity.Mathematics;
 using UnityEngine;
+using static Unity.Mathematics.math;
 
 public class WireframeRenderer : MonoBehaviour
 {
@@ -93,7 +98,7 @@ public class WireframeRenderer : MonoBehaviour
             }
         }
 
-        public void GenerateEdgeAngles(Vector3[] vertices, int[] triangles)
+        public void GenerateEdgeAngles(float3[] vertices, int[] triangles)
         {
             edgeAngles = new float[edgeTriangles.Count];
             for (int i = 0; i < edgeTriangles.Count; ++i)
@@ -107,16 +112,16 @@ public class WireframeRenderer : MonoBehaviour
                     int triangleA = edgeTriangles[i].Item1;
                     int triangleB = edgeTriangles[i].Item2;
 
-                    Vector3 a0 = vertices[triangles[triangleA * 3 + 0]];
-                    Vector3 a1 = vertices[triangles[triangleA * 3 + 1]];
-                    Vector3 a2 = vertices[triangles[triangleA * 3 + 2]];
+                    float3 a0 = vertices[triangles[triangleA * 3 + 0]];
+                    float3 a1 = vertices[triangles[triangleA * 3 + 1]];
+                    float3 a2 = vertices[triangles[triangleA * 3 + 2]];
 
-                    Vector3 b0 = vertices[triangles[triangleB * 3 + 0]];
-                    Vector3 b1 = vertices[triangles[triangleB * 3 + 1]];
-                    Vector3 b2 = vertices[triangles[triangleB * 3 + 2]];
+                    float3 b0 = vertices[triangles[triangleB * 3 + 0]];
+                    float3 b1 = vertices[triangles[triangleB * 3 + 1]];
+                    float3 b2 = vertices[triangles[triangleB * 3 + 2]];
 
-                    Vector3 normalA = Vector3.Cross(a1 - a0, a2 - a0);
-                    Vector3 normalB = Vector3.Cross(b1 - b0, b2 - b0);
+                    float3 normalA = math.cross(a1 - a0, a2 - a0);
+                    float3 normalB = math.cross(b1 - b0, b2 - b0);
 
                     edgeAngles[i] = Vector3.Angle(normalA, normalB);
                     // Debug.LogFormat("{0}, {1}, {2}, {3}, {4}", edgeAngles[i].ToString("0.00000"), triangleA, triangleB, normalA, normalB);
@@ -144,24 +149,32 @@ public class WireframeRenderer : MonoBehaviour
         }
     }
 
-    private class MeshCache
+    private class MeshCache : IDisposable
     {
         public Mesh mesh { get; private set; }
         public bool edges { get; private set; }
         public int[] triangles { get; private set; }
-        public Vector3[] vertices { get; private set; }
+        public float3[] vertices { get; private set; }
         public Transform transform { get; private set; }
+        public float4x4 localToWorldMatrix { get; private set; }
         public RenderType renderType { get; private set; }
         public int skinIndex { get; private set; }
         public EdgeCache edgeCache { get; private set; }
         public float edgeAngleLimit { get; private set; }
+        private NativeArray<float3> nativeVerticesLocal; // { get; private set; }
+        public NativeArray<float4> nativeVerticesClip; // { get; private set; }
 
         public MeshCache(Mesh mesh, Transform transform, RenderType renderType, int skinIndex = 0, float edgeAngleLimit = 0.0f)
         {
             this.mesh = mesh;
-            vertices = mesh.vertices;
+            vertices = new float3[mesh.vertexCount];
+            for (int i = 0; i < mesh.vertexCount; ++i)
+            {
+                vertices[i] = mesh.vertices[i];
+            }
             triangles = mesh.triangles;
             this.transform = transform;
+            this.localToWorldMatrix = transform.localToWorldMatrix;
             this.renderType = renderType;
             this.skinIndex = skinIndex;
             this.edgeCache = new EdgeCache(vertices.Length);
@@ -175,6 +188,14 @@ public class WireframeRenderer : MonoBehaviour
             }
             edgeCache.GenerateEdgeAngles(vertices, triangles);
 
+            nativeVerticesLocal = new NativeArray<float3>(vertices.Length, Allocator.Persistent);
+            nativeVerticesClip = new NativeArray<float4>(vertices.Length, Allocator.Persistent);
+
+            for(int i = 0; i < vertices.Length; ++i)
+            {
+                nativeVerticesLocal[i] = vertices[i];
+            }
+
             // Debug.LogFormat("New MeshCache with {0} vertices", vertices.Length);
         }
 
@@ -182,14 +203,58 @@ public class WireframeRenderer : MonoBehaviour
         {
             skinnedMeshRenderer.BakeMesh(mesh);
             triangles = mesh.triangles;
-            vertices = mesh.vertices;
+            for (int i = 0; i < mesh.vertexCount; ++i)
+            {
+                vertices[i] = mesh.vertices[i];
+            }
+        }
+
+        public JobHandle UpdateClipVertices(float4x4 localToClip)
+        {
+            var job = new LocalToClipJob
+            {
+                localVertices = nativeVerticesLocal,
+                localToClip = localToClip,
+                clipVertices = nativeVerticesClip
+            };
+            return job.Schedule();
+        }
+
+        public void Dispose()
+        {
+            nativeVerticesLocal.Dispose();
+            nativeVerticesClip.Dispose();
+        }
+    }
+
+    [BurstCompile(CompileSynchronously = true)]
+    private struct LocalToClipJob : IJob
+    {
+        [ReadOnly]
+        public NativeArray<float3> localVertices;
+
+        [ReadOnly]
+        public float4x4 localToClip;
+
+        [WriteOnly]
+        public NativeArray<float4> clipVertices;
+
+        public void Execute()
+        {
+            for (int i = 0; i < localVertices.Length; ++i)
+            {
+
+                float3 offset = 0.0f; //  UnityEngine.Random.onUnitSphere * randomOffset;
+                float3 localPoint = localVertices[i] + offset;
+                float4 clipPoint = math.mul(localToClip, float4(localPoint.x, localPoint.y, localPoint.z, 1.0f));
+                clipVertices[i] = clipPoint;
+            }
         }
     }
 
     private List<MeshCache> meshCaches = new List<MeshCache>();
     private bool cacheRequiresUpdate = false;
     private AudioRender.IRenderDevice renderDevice;
-    private Matrix4x4 frameMatrix;
 
     public void AddMesh(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer, float edgeAngleLimit)
     {
@@ -263,6 +328,11 @@ public class WireframeRenderer : MonoBehaviour
 
     private void OnDestroy()
     {
+        for (int i = 0; i < meshCaches.Count; ++i)
+        {
+            meshCaches[i].Dispose();
+        }
+        meshCaches.Clear();
         Instance = null;
         Debug.Log("Stop scope rendering.");
         renderDevice?.Dispose();
@@ -282,7 +352,16 @@ public class WireframeRenderer : MonoBehaviour
             UpdateCache();
         }
 
-        frameMatrix = renderCamera.projectionMatrix * renderCamera.worldToCameraMatrix;
+
+        var jobHandles = new NativeArray<JobHandle>(meshCaches.Count, Allocator.Temp);
+        for (int i = 0; i < meshCaches.Count; ++i)
+        {
+            float4x4 localToClip = math.mul(renderCamera.projectionMatrix, math.mul(renderCamera.worldToCameraMatrix, meshCaches[i].localToWorldMatrix));
+            jobHandles[i] = meshCaches[i].UpdateClipVertices(localToClip);
+        }
+        JobHandle.ScheduleBatchedJobs();
+        JobHandle.CompleteAll(jobHandles);
+        jobHandles.Dispose();
 
         for (int i = 0; i < meshCaches.Count; ++i)
         {
@@ -320,6 +399,10 @@ public class WireframeRenderer : MonoBehaviour
     private void UpdateCache()
     {
         Debug.Log("Update mesh cache.");
+        for(int i = 0; i < meshCaches.Count; ++i)
+        {
+            meshCaches[i].Dispose();
+        }
         meshCaches.Clear();
 
         foreach (StaticObject staticObject in staticObjects)
@@ -361,7 +444,7 @@ public class WireframeRenderer : MonoBehaviour
         {
             if (TriangleFacesCamera(cacheIndex, i))
             {
-                if(meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i], meshCache.triangles[i + 1]) >= meshCache.edgeAngleLimit)
+                if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i], meshCache.triangles[i + 1]) >= meshCache.edgeAngleLimit)
                 {
                     DrawLine(cacheIndex, i + 0, i + 1);
                 }
@@ -398,15 +481,6 @@ public class WireframeRenderer : MonoBehaviour
         }
     }
 
-    private Vector4 GetClipPoint(int cacheIndex, int triangleListIdx)
-    {
-        Vector3 offset = UnityEngine.Random.onUnitSphere * randomOffset;
-        Vector3 localPoint = meshCaches[cacheIndex].vertices[meshCaches[cacheIndex].triangles[triangleListIdx]];
-        Vector3 worldPoint = meshCaches[cacheIndex].transform.TransformPoint(localPoint) + offset;
-        Vector4 clipPoint = frameMatrix * new Vector4(worldPoint.x, worldPoint.y, worldPoint.z, 1.0f);
-        return clipPoint;
-    }
-
     private Vector2 ClipToScopePoint(Vector4 clipPoint)
     {
         Vector3 ndcPoint = clipPoint / clipPoint.w;
@@ -438,10 +512,16 @@ public class WireframeRenderer : MonoBehaviour
 
     private bool TriangleFacesCamera(int cacheIndex, int triangleListIdx)
     {
-        Vector3 a = GetScreenPoint(cacheIndex, triangleListIdx);
-        Vector3 b = GetScreenPoint(cacheIndex, triangleListIdx + 1);
-        Vector3 c = GetScreenPoint(cacheIndex, triangleListIdx + 2);
-        return Vector3.Cross(b - a, c - a).z < 0;
+        var meshCache = meshCaches[cacheIndex];
+        float4 a = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdx]];
+        float4 b = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdx + 1]];
+        float4 c = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdx + 2]];
+
+        float3 a3 = new float3(a.x / a.w, a.y / a.w, a.z / a.w);
+        float3 b3 = new float3(b.x / b.w, b.y / b.w, b.z / b.w);
+        float3 c3 = new float3(c.x / c.w, c.y / c.w, c.z / c.w);
+
+        return math.cross(b3 - a3, c3 - a3).z < 0;
     }
 
     private void SetPoint(int cacheIndex, int triangleListIdx)
@@ -554,11 +634,9 @@ public class WireframeRenderer : MonoBehaviour
 
     private void DrawLine(int cacheIndex, int triangleListIdxFrom, int triangleListIdxTo)
     {
-        Vector4 a = Vector4.zero;
-        Vector4 b = Vector4.zero;
-
-        Vector4 clipFrom = GetClipPoint(cacheIndex, triangleListIdxFrom);
-        Vector4 clipTo = GetClipPoint(cacheIndex, triangleListIdxTo);
+        MeshCache meshCache = meshCaches[cacheIndex];
+        Vector4 clipFrom = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxFrom]];
+        Vector4 clipTo = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxTo]];
 
         if (!ClipCylinder(ref clipFrom, ref clipTo))
         {
