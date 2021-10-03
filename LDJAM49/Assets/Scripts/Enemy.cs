@@ -34,7 +34,7 @@ public class Enemy : MonoBehaviour
 
     private void Update()
     {
-        if (Vector3.Distance(Player.Instance.transform.position, transform.position) < 20.0f)
+        if (Vector3.Distance(Player.Instance.transform.position, transform.position) < 42.0f)
         {
             Vector3 futurePlayerPos = Player.Instance.transform.position + Player.Instance.characterController.velocity;
             Quaternion targetRotation = Quaternion.LookRotation(futurePlayerPos - transform.position);

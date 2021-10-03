@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 6076707142801106222}
   - component: {fileID: 6661332233304725238}
   m_Layer: 9
-  m_Name: Enemy
+  m_Name: Enemy1
   m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -45,7 +45,7 @@ SphereCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 1
+  m_Radius: 2.1
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &6076707142801106222
 MonoBehaviour:
@@ -59,17 +59,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0852801436cd6fd44b7ebc6dc5fc8718, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  health: 5
-  targetingSpeed: 100
+  health: 4
+  targetingSpeed: 110
   bulletPrefab: {fileID: 2455357403465259073, guid: 4049a9e93c8f1a94d8c3ec643d29a6a0, type: 3}
   isMoving: 1
   characterController: {fileID: 6661332233304725238}
-  shootRateMin: 2
-  shootRateMax: 3
-  moveRateMin: 1
+  shootRateMin: 1
+  shootRateMax: 2
+  moveRateMin: 2
   moveRateMax: 5
   moveSpeedMin: 0
-  moveSpeedMax: 3
+  moveSpeedMax: 1
 --- !u!143 &6661332233304725238
 CharacterController:
   m_ObjectHideFlags: 0
@@ -81,8 +81,8 @@ CharacterController:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Height: 1
-  m_Radius: 1
+  m_Height: 2.1
+  m_Radius: 2.1
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
@@ -114,13 +114,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7504756202422919612}
-  m_LocalRotation: {x: 0.35355338, y: 0.35355338, z: -0.1464466, w: 0.8535535}
+  m_LocalRotation: {x: 0.7071064, y: 0.000000199303, z: 0.0000000074505797, w: 0.70710725}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 2351499070601325195}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 45, y: 45, z: 0}
+  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
 --- !u!33 &8745786491001444079
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -128,7 +128,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7504756202422919612}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: 3446118074141892051, guid: 7e57ca1a668f7834bad38bd9795a770b, type: 3}
 --- !u!23 &3695227795345202475
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -185,3 +185,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
   renderType: 1
+  edgeAngleLimit: 2

@@ -9,6 +9,7 @@ public class Player : MonoBehaviour
     public static float turnSpeed = 350.0f;
 
     [SerializeField] Camera cam;
+    [SerializeField] float fov = 100.0f;
     [SerializeField] GameObject gameParent;
     [SerializeField] float speed = 10.0f;
     [SerializeField] float turboMultiplier = 2.0f;
@@ -31,9 +32,9 @@ public class Player : MonoBehaviour
     float hpRechargeRate = 1.0f;
     float hpRechargeDelay = 5.0f;
 
-    bool isTurboUnlocked = false;
-    bool isGrabUnlocked = false;
-    bool isRocketUnlocked = false;
+    [SerializeField] bool isTurboUnlocked = false;
+    [SerializeField] bool isGrabUnlocked = false;
+    [SerializeField] bool isRocketUnlocked = false;
 
     void Awake()
     {
@@ -49,9 +50,14 @@ public class Player : MonoBehaviour
 
         Vector3 movement = Vector3.zero;
         bool isTurbo = Input.GetKey(KeyCode.LeftShift) && !isLockingTargets && grabJoint.connectedBody == null && isTurboUnlocked;
-        if (Input.GetKey(KeyCode.W))
+        movement += transform.forward * (isTurbo ? turboMultiplier : 0.0f);
+        if (Input.GetKeyDown(KeyCode.LeftShift) && isTurbo)
         {
-            movement += transform.forward * (isTurbo ? turboMultiplier : 1.0f);
+            CameraShake.Instance.Shake(0.3f);
+        }
+        if (Input.GetKey(KeyCode.W) && !isTurbo)
+        {
+            movement += transform.forward;
         }
         else if (Input.GetKey(KeyCode.S))
         {
@@ -103,12 +109,13 @@ public class Player : MonoBehaviour
 
         if (Input.GetKey(KeyCode.Home))
         {
-            cam.fieldOfView = Mathf.Clamp(cam.fieldOfView + 100.0f * Time.deltaTime, 50.0f, 160.0f);
+            fov = Mathf.Clamp(fov + 100.0f * Time.deltaTime, 50.0f, 160.0f);
         }
         else if (Input.GetKey(KeyCode.End))
         {
-            cam.fieldOfView = Mathf.Clamp(cam.fieldOfView - 100.0f * Time.deltaTime, 50.0f, 160.0f);
+            fov = Mathf.Clamp(fov - 100.0f * Time.deltaTime, 50.0f, 160.0f);
         }
+        cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, isTurbo ? fov * 1.2f : fov, Time.deltaTime * 10.0f);
 
         if (grabJoint.connectedBody)
         {
@@ -117,11 +124,13 @@ public class Player : MonoBehaviour
                 if (grabJoint.connectedBody)
                 {
                     Rigidbody grabbedObject = grabJoint.connectedBody;
-                    grabJoint.connectedBody = null;
                     if (!Input.GetKey(KeyCode.F))
                     {
+                        CameraShake.Instance.Shake(0.3f);
+                        grabJoint.connectedBody.transform.GetComponent<PhysBox>().thrown = true;
                         grabbedObject.AddForce(transform.forward * 40.0f, ForceMode.Impulse);
                     }
+                    grabJoint.connectedBody = null;
                 }
             }
         }
@@ -233,6 +242,7 @@ public class Player : MonoBehaviour
     public void TakeDamage(int damage)
     {
         Debug.Log("Take damage! " + damage);
+        CameraShake.Instance.Shake(0.5f);
         hpTimer = Time.time + hpRechargeDelay;
         health -= damage;
         WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
@@ -258,16 +268,19 @@ public class Player : MonoBehaviour
         {
             if (other.transform.name == "Turbo")
             {
+                lastCheckpoint = transform.position;
                 isTurboUnlocked = true;
                 Debug.Log("Turbo acquired!");
             }
             else if (other.transform.name == "Grab")
             {
+                lastCheckpoint = transform.position;
                 isGrabUnlocked = true;
                 Debug.Log("Grab acquired!");
             }
             else if (other.transform.name == "Rocket")
             {
+                lastCheckpoint = transform.position;
                 isRocketUnlocked = true;
                 Debug.Log("Rocket acquired!");
             }

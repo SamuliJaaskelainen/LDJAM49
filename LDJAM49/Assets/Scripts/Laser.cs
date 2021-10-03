@@ -2,6 +2,7 @@ using UnityEngine;
 
 public class Laser : MonoBehaviour
 {
+    [SerializeField] int damage = 1;
     [SerializeField] float speed = 10.0f;
     [SerializeField] LayerMask hitLayers;
 
@@ -25,7 +26,7 @@ public class Laser : MonoBehaviour
         {
             if (hit.transform.tag != "Untagged")
             {
-                hit.transform.SendMessage("OnHit", 1, SendMessageOptions.DontRequireReceiver);
+                hit.transform.SendMessage("OnHit", damage, SendMessageOptions.DontRequireReceiver);
             }
             Hit();
         }

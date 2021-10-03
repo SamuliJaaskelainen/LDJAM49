@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 2455357403465259073}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 1.4944075, y: -1.434, z: -4.183}
-  m_LocalScale: {x: 0.1, y: 0.1, z: 0.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 2455357404881611653}
   m_Father: {fileID: 0}
@@ -59,7 +59,6 @@ GameObject:
   - component: {fileID: 2455357404881611653}
   - component: {fileID: 2455357404881611673}
   - component: {fileID: 2455357404881611654}
-  - component: {fileID: 2455357404881611655}
   - component: {fileID: 2455357404881611652}
   m_Layer: 6
   m_Name: Graphics
@@ -89,7 +88,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2455357404881611650}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  m_Mesh: {fileID: -2084777811151021919, guid: 4c1b16966ff7016499a32ed8fdc92bfb, type: 3}
 --- !u!23 &2455357404881611654
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -132,19 +131,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!65 &2455357404881611655
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2455357404881611650}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &2455357404881611652
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,4 +144,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skinnedMeshRenderer: {fileID: 0}
-  renderType: 0
+  renderType: 1
+  edgeAngleLimit: 0
