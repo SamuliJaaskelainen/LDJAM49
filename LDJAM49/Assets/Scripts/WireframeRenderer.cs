@@ -266,19 +266,11 @@ public class WireframeRenderer : MonoBehaviour
 
         private float2 GetXY(float4 v)
         {
-            if (v.z < -v.w)
-            {
-                return new float2(v.w / v.x, v.w / v.y);
-            }
             return new float2(v.x / v.w, v.y / v.w);
         }
 
         private float3 GetXYZ(float4 v)
         {
-            if (v.z < -v.w)
-            {
-                return new float3(v.w / v.x, v.w / v.y, v.z / v.w);
-            }
             return new float3(v.x / v.w, v.y / v.w, v.z / v.w);
         }
 
@@ -341,7 +333,8 @@ public class WireframeRenderer : MonoBehaviour
 
         private bool hitsTriangle(float2 st)
         {
-            return (0 < st.y && st.y < 1);
+            float epsilon = 0.0f; // math.EPSILON;
+            return (0 - epsilon < st.y && st.y < 1 + epsilon);
         }
 
         private bool isPointBehindTriangle(float4 p, int iTriangle)
@@ -359,11 +352,6 @@ public class WireframeRenderer : MonoBehaviour
         public void Execute()
         {
             clippedEdges.Clear();
-            for (int i = 0; i < edgeVertexCount / 2; ++i)
-            {
-                // edgeIntersections[i].Clear();
-                // edgeIntersections[i].Clear();
-            }
 
             Float2Comparer comparer = new Float2Comparer();
             NativeList<float2> intersections = new NativeList<float2>(Allocator.Temp);
@@ -393,7 +381,7 @@ public class WireframeRenderer : MonoBehaviour
 
                     int hitCount = (hitsTriangle(st0) ? 1 : 0) + (hitsTriangle(st1) ? 1 : 0) + (hitsTriangle(st2) ? 1 : 0);
 
-                    if (hitCount == 0)
+                    if (hitCount < 2) /// TODO: hit might not register if it is the corner of the triangle (e.g. cube)
                     {
                         continue;
                     }
@@ -496,63 +484,6 @@ public class WireframeRenderer : MonoBehaviour
                             continue;
                         }
                     }
-
-                    /*
-                    bool aInside = pointInTriangle(a);
-                    bool bInside = pointInTriangle(b);
-
-                    if (aInside || bInside)
-                    {
-                        if (aInside && aInFront)
-                        {
-                            // Line segment must be in front of triangle, assuming no intersecting geometry.
-                            continue;
-                        }
-
-                        if (bInside && bInFront)
-                        {
-                            continue;
-                        }
-
-                        if (aInside && bInside)
-                        {
-                            // Line segment must be in front of triangle, assuming no intersecting geometry.
-                        }
-
-                        if(!aInside)
-                        {
-                            // SWAP
-                        }
-
-                        // Line segment shortened by triangle.
-                        continue;
-                    }
-                    */
-
-                    // Line segment cut in two by triangle or triangle is behind it.
-
-                    //for (int j = 0; j < jumpEdges.Length; j += 2)
-                    //{
-                    //    float4 a0 = clipVertices[drawnEdges[i + 0]];
-                    //    float4 a1 = clipVertices[drawnEdges[i + 1]];
-
-                    //    float4 b0 = clipVertices[drawnEdges[j + 0]];
-                    //    float4 b1 = clipVertices[drawnEdges[j + 1]];
-
-                    //    float tA, tB;
-                    //    LineSegmentIntersection(GetXY(a0), GetXY(a1), GetXY(b0), GetXY(b1), out tA, out tB);
-
-                    //    if (0.0f < tA && tA < 1.0f && 0.0f < tB && tB < 1.0f)
-                    //    {
-                    //        float zAInv = (1.0f - tA) * (a0.w / a0.z) + tA * (a0.w / a0.z);
-                    //        float zBInv = (1.0f - tB) * (b0.w / b0.z) + tB * (b0.w / b0.z);
-                    //        if(zAInv < zBInv) ///////// TODO CHECK SIGN
-                    //        {
-                    //            edgeIntersections[i].Add(tA);
-                    //        }
-                    //    }
-                    //}
-                    //edgeIntersections[i].Sort();
                 }
 
                 intersections.Sort(comparer);
@@ -756,10 +687,6 @@ public class WireframeRenderer : MonoBehaviour
         {
             switch (meshCaches[i].renderType)
             {
-                case RenderType.Line:
-                    DrawLines(i);
-                    break;
-
                 case RenderType.Triangle:
                     DrawTriangles(i);
                     break;
@@ -824,17 +751,6 @@ public class WireframeRenderer : MonoBehaviour
         cacheRequiresUpdate = false;
 
         Debug.LogFormat("Updated mesh cache in {0}ms", 1000.0f * (Time.realtimeSinceStartup - startTime));
-    }
-
-    private void DrawLines(int cacheIndex)
-    {
-        if (meshCaches[cacheIndex].mesh && meshCaches[cacheIndex].transform)
-        {
-            for (int i = 0; i < meshCaches[cacheIndex].vertices.Length; i += 2)
-            {
-                DrawLine(cacheIndex, i + 0, i + 1);
-            }
-        }
     }
 
     private void Swap<T>(ref T a, ref T b)
@@ -1047,7 +963,7 @@ public class WireframeRenderer : MonoBehaviour
         float3 b3 = new float3(b.x / b.w, b.y / b.w, b.z / b.w);
         float3 c3 = new float3(c.x / c.w, c.y / c.w, c.z / c.w);
 
-        return math.cross(b3 - a3, c3 - a3).z != 0
+        return (((a.z < -a.w || b.z < -b.w || c.z < -c.w) || math.cross(b3 - a3, c3 - a3).z < 0)) // only backface cull if does not need front plane clipping
             && !(a.z < -a.w && b.z < -b.w && c.z < -c.w) && !(a.z > a.w && b.z > b.w && c.z > c.w) // TODO: add proper frustrum cull
             && !(a.y < -a.w && b.y < -b.w && c.y < -c.w) && !(a.y > a.w && b.y > b.w && c.y > c.w) //
             && !(a.x < -a.w && b.x < -b.w && c.x < -c.w) && !(a.x > a.w && b.x > b.w && c.x > c.w);
@@ -1188,7 +1104,7 @@ public class WireframeRenderer : MonoBehaviour
 
     private void GlobalRender()
     {
-        //Debug.LogFormat("Performing global render for {0}/{1} edges, {2} triangles", globalDrawnEdgesClipped, globalDrawnEdgeCount / 2, globalTriangleCount / 3);
+        Debug.LogFormat("Performing global render for {0}/{1} edges, {2} triangles", globalDrawnEdgesClipped, globalDrawnEdgeCount / 2, globalTriangleCount / 3);
         if (useLineToTriangleClipping)
         {
             for (int i = 0; i < globalDrawnEdgesClipped.Length; i += 2)
@@ -1218,20 +1134,5 @@ public class WireframeRenderer : MonoBehaviour
                 renderDevice.DrawLine(ClipToScopePoint(clipTo));
             }
         }
-    }
-
-    private void DrawLine(int cacheIndex, int triangleListIdxFrom, int triangleListIdxTo)
-    {
-        MeshCache meshCache = meshCaches[cacheIndex];
-        float4 clipFrom = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxFrom]];
-        float4 clipTo = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxTo]];
-
-        if (!ClipCylinder(ref clipFrom, ref clipTo))
-        {
-            return;
-        }
-
-        renderDevice.SetPoint(ClipToScopePoint(clipFrom));
-        renderDevice.DrawLine(ClipToScopePoint(clipTo));
     }
 }
