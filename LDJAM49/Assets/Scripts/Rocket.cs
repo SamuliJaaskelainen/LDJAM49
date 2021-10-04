@@ -19,6 +19,7 @@ public class Rocket : MonoBehaviour
 
     void Hit()
     {
+        AudioManager.Instance.PlaySound("ROCKET_EXPLOSION", transform.position);
         EffectManager.Instance.SpawnSmallExplosion(transform.position);
         CancelInvoke();
         Destroy(gameObject);

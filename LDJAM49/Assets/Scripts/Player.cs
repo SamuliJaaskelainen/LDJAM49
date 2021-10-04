@@ -49,6 +49,7 @@ public class Player : MonoBehaviour
     [Header("Sfx")]
     [SerializeField] AudioSource turboLoop;
     [SerializeField] AudioSource grabLoop;
+    [SerializeField] AudioSource lockLoop;
 
     [Header("UI")]
     [SerializeField] GameObject menu;
@@ -91,7 +92,7 @@ public class Player : MonoBehaviour
         movement += transform.forward * (isTurbo ? turboMultiplier : 0.0f);
         if (Input.GetKeyDown(KeyCode.LeftShift) && isTurbo)
         {
-            // AUDIO: Turbo boost start
+            AudioManager.Instance.PlaySound("BOOST START", transform.position);
             CameraShake.Instance.Shake(0.3f);
             turboLoop.Play();
         }
@@ -174,14 +175,14 @@ public class Player : MonoBehaviour
                     Rigidbody grabbedObject = grabJoint.connectedBody;
                     if (!Input.GetKey(KeyCode.F))
                     {
-                        // AUDIO: Grab throw
+                        AudioManager.Instance.PlaySound("TRACKTORBEAM_THROW", transform.position);
                         CameraShake.Instance.Shake(0.3f);
                         grabJoint.connectedBody.transform.GetComponent<PhysBox>().thrown = true;
-                        grabbedObject.AddForce(transform.forward * 40.0f, ForceMode.Impulse);
+                        grabbedObject.AddForce(transform.forward * 60.0f, ForceMode.Impulse);
                     }
                     else
                     {
-                        // AUDIO: Grab drop
+                        AudioManager.Instance.PlaySound("TRACKTORBEAM_DROP", transform.position);
                         CameraShake.Instance.Shake(0.1f);
                     }
                     grabJoint.connectedBody = null;
@@ -192,14 +193,14 @@ public class Player : MonoBehaviour
         {
             if (Input.GetMouseButton(0) && Time.time > laserTimer)
             {
-                // AUDIO: Shoot laser
+                AudioManager.Instance.PlaySound("SHOOT LASER", transform.position, 0.6f, Random.Range(0.95f, 1.00f));
                 laserTimer = Time.time + laserRate;
                 GameObject.Instantiate(laserPrefab, barrel.position, barrel.rotation, gameParent.transform);
             }
 
             if (Input.GetMouseButtonDown(1) && Time.time > rocketTimer && isRocketUnlocked)
             {
-                // AUDIO: Start locking
+                lockLoop.Play();
                 rocketTimer = Time.time + rocketRate;
                 lockedTargets.Clear();
                 isLockingTargets = true;
@@ -207,8 +208,9 @@ public class Player : MonoBehaviour
             else if ((Input.GetMouseButtonUp(1) || lockedTargets.Count >= 3) && isLockingTargets)
             {
                 isLockingTargets = false;
+                lockLoop.Stop();
 
-                // AUDIO: Shoot rocket
+                AudioManager.Instance.PlaySound("ROCKET_LAUNCH", transform.position);
                 if (lockedTargets.Count > 0)
                 {
                     for (int i = 0; i < lockedTargets.Count; ++i)
@@ -230,13 +232,13 @@ public class Player : MonoBehaviour
             if (isLockingTargets)
             {
                 RaycastHit hit;
-                if (Physics.SphereCast(transform.position, 0.2f, transform.forward, out hit, cam.farClipPlane))
+                if (Physics.CapsuleCast(transform.position, transform.position + transform.forward, 1.0f, transform.forward, out hit, cam.farClipPlane))
                 {
                     if (hit.transform.tag == "Enemy")
                     {
                         if (!lockedTargets.Contains(hit.transform.gameObject))
                         {
-                            // AUDIO: Lock target
+                            AudioManager.Instance.PlaySound("TARGET LOCKED", transform.position);
                             Debug.DrawLine(transform.position, hit.point, Color.green, 1.0f);
                             lockedTargets.Add(hit.transform.gameObject);
                         }
@@ -264,20 +266,20 @@ public class Player : MonoBehaviour
                 {
                     if (hit.transform.tag == "Phys")
                     {
-                        // AUDIO: Grab start
+                        AudioManager.Instance.PlaySound("TRACKTORBEAM_USE", transform.position);
                         Debug.DrawLine(transform.position, hit.point, Color.green, 1.0f);
                         hit.transform.position = grabJoint.transform.position;
                         grabJoint.connectedBody = hit.transform.GetComponent<Rigidbody>();
                     }
                     else
                     {
-                        // AUDIO: Grab miss
+                        AudioManager.Instance.PlaySound("TRACKTORBEAM_MISS", transform.position);
                         Debug.DrawLine(transform.position, hit.point, Color.red, 1.0f);
                     }
                 }
                 else
                 {
-                    // AUDIO: Grab miss
+                    AudioManager.Instance.PlaySound("TRACKTORBEAM_MISS", transform.position);
                     Debug.DrawLine(transform.position, transform.position + transform.forward * 5.0f, Color.red, 1.0f);
                 }
             }
@@ -299,7 +301,7 @@ public class Player : MonoBehaviour
 
         if (Time.time > hpTimer && health < 10)
         {
-            // AUDIO: Heal
+            AudioManager.Instance.PlaySound("HEAL", transform.position);
             hpTimer = Time.time + hpRechargeRate;
             health++;
             WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
@@ -340,7 +342,7 @@ public class Player : MonoBehaviour
             firstDamage = false;
         }
 
-        // AUDIO: Player take damage
+        AudioManager.Instance.PlaySound("TAKING DAMAGE", transform.position);
         Debug.Log("Take damage! " + damage);
         CameraShake.Instance.Shake(0.5f);
         hpTimer = Time.time + hpRechargeDelay;
@@ -360,7 +362,7 @@ public class Player : MonoBehaviour
 
     public void Respawn()
     {
-        // AUDIO: Player respawn
+        // AUDIO: Respawn
         Debug.Log("Respawn");
         if (firstDeath)
         {
@@ -384,7 +386,7 @@ public class Player : MonoBehaviour
         {
             if (other.transform.name == "Turbo")
             {
-                // AUDIO: Pickup turbo
+                AudioManager.Instance.PlaySound("PICKUP_BOOST", transform.position);
                 lastCheckpoint = transform.position;
                 isTurboUnlocked = true;
                 turboKeyMenu.SetActive(true);
@@ -394,7 +396,7 @@ public class Player : MonoBehaviour
             }
             else if (other.transform.name == "Grab")
             {
-                // AUDIO: Pickup grab
+                AudioManager.Instance.PlaySound("PICKUP_BEAM", transform.position);
                 lastCheckpoint = transform.position;
                 isGrabUnlocked = true;
                 grabKeyMenu.SetActive(true);
@@ -404,7 +406,7 @@ public class Player : MonoBehaviour
             }
             else if (other.transform.name == "Rocket")
             {
-                // AUDIO: Pickup rocket
+                AudioManager.Instance.PlaySound("PICKUP_ROCKET", transform.position);
                 lastCheckpoint = transform.position;
                 isRocketUnlocked = true;
                 rocketKeyMenu.SetActive(true);
@@ -414,7 +416,6 @@ public class Player : MonoBehaviour
             }
             else if (other.transform.name == "HubTrigger")
             {
-                // AUDIO: Reach hub
                 lastCheckpoint = transform.position;
                 missionText.text = "Next objective: Find turbo booster";
                 hintText.text = "Hint: New equipment will unlock new actions";

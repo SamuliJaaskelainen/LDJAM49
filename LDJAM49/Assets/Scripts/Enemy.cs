@@ -32,9 +32,11 @@ public class Enemy : MonoBehaviour
 
     public void OnHit(int damage)
     {
+        AudioManager.Instance.PlaySound("ENEMY HIT", transform.position);
         health -= damage;
         if (health <= 0)
         {
+            AudioManager.Instance.PlaySound("ENEMY EXPLODE", transform.position);
             if (isBoss)
             {
                 EffectManager.Instance.SpawnLargeExplosion(transform.position);
@@ -44,10 +46,6 @@ public class Enemy : MonoBehaviour
                 EffectManager.Instance.SpawnExplosion(transform.position);
             }
             Destroy(gameObject);
-        }
-        else
-        {
-            // AUDIO: Enemy takes damage
         }
     }
 
@@ -61,12 +59,12 @@ public class Enemy : MonoBehaviour
 
             if (Time.time > shootTimer)
             {
-                // AUDIO: Enemy shoot laser
+                AudioManager.Instance.PlaySound("ENEMY SHOOT", transform.position);
                 shootTimer = Time.time + Random.Range(shootRateMin, shootRateMax);
                 Instantiate(bulletPrefab, transform.position, targetRotation, gameParent);
                 if (isBoss)
                 {
-                    Instantiate(bulletPrefab, transform.position + transform.right * 0.75f, transform.rotation, gameParent);
+                    Instantiate(bulletPrefab, transform.position + transform.up * 4.0f + transform.forward * -3.0f, transform.rotation, gameParent);
                 }
             }
 

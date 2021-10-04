@@ -9,6 +9,8 @@ public class MapManager : MonoBehaviour
     [SerializeField] GameObject mapParent;
     [SerializeField] Transform mapPlayer;
     [SerializeField] GameObject gameParent;
+    [SerializeField] AudioSource moveLoop;
+    [SerializeField] AudioSource music;
     float zoomLevel = 1.0f;
     float playerBlinkTimer;
     float playerBlinkDelay = 0.4f;
@@ -16,7 +18,8 @@ public class MapManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        HideMap();
+        mapParent.SetActive(false);
+        gameParent.SetActive(true);
     }
 
     void Update()
@@ -52,15 +55,22 @@ public class MapManager : MonoBehaviour
 
             float horizontal = Input.GetAxis("Mouse X") * Player.turnSpeed / 4.0f;
             float vertical = -Input.GetAxis("Mouse Y") * Player.turnSpeed / 4.0f;
+
             mapParent.transform.Rotate(Player.Instance.transform.up, horizontal, Space.World);
             mapParent.transform.Rotate(Player.Instance.transform.right, vertical, Space.World);
 
-            //float zoom = Input.mouseScrollDelta.y * 0.1f;
-            //zoomLevel = Mathf.Clamp(zoomLevel + zoom, 0.25f, 3.0f);
-            //mapParent.transform.localScale = Vector3.one * zoomLevel;
-
             mapPlayer.localPosition = Player.Instance.transform.position * 0.1f + Vector3.forward;
             mapPlayer.localRotation = Player.Instance.transform.rotation;
+
+            if (!moveLoop.isPlaying && (!Mathf.Approximately(horizontal, 0.0f) || !Mathf.Approximately(vertical, 0.0f) || !Mathf.Approximately(movement.sqrMagnitude, 0.0f)))
+            {
+                moveLoop.Play();
+            }
+            else if (moveLoop.isPlaying)
+            {
+                moveLoop.Pause();
+            }
+
             if (playerBlinkTimer < Time.unscaledTime)
             {
                 playerBlinkTimer = Time.unscaledTime + playerBlinkDelay;
@@ -76,18 +86,20 @@ public class MapManager : MonoBehaviour
 
     public void ShowMap()
     {
-        // AUDIO: Open map
+        AudioManager.Instance.PlaySound("MAP OPEN", transform.position);
         Time.timeScale = 0.0f;
         mapParent.SetActive(true);
         gameParent.SetActive(false);
+        music.Pause();
     }
 
     public void HideMap()
     {
-        // AUDIO: Close map
+        AudioManager.Instance.PlaySound("MAP CLOSE", transform.position);
         Time.timeScale = 1.0f;
         mapParent.SetActive(false);
         gameParent.SetActive(true);
+        music.Play();
     }
 
     public void ToggleMap()

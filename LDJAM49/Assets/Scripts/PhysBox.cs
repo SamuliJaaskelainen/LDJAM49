@@ -21,7 +21,10 @@ public class PhysBox : MonoBehaviour
 
     private void OnCollisionEnter(Collision other)
     {
-        // AUDIO: Generic collision
+        if (other.transform.tag != "Player")
+        {
+            AudioManager.Instance.PlaySound("COLLISION WALL", transform.position);
+        }
 
         if (other.transform.tag == "Door" && thrown)
         {
