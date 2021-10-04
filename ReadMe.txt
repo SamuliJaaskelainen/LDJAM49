@@ -28,3 +28,14 @@ F3/F4: Change field of view
 ESC: Defocus game
 K: Take damage (debug)
 U: Hide UI (debug)
+
+Hints:
+You are shown in the map as blinking point
+New equipment will unlock new actions
+You will automatically heal after 10 seconds of safety
+Game rendering becomes more unstable when you are damaged
+When you die, you do not lose progress
+Hold SHIFT for turbo speed
+Throwing boxes does high damage and breaks doors
+Hold R. MOUSE to lock targets for rockets
+
