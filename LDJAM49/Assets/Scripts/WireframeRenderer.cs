@@ -257,11 +257,19 @@ public class WireframeRenderer : MonoBehaviour
 
         private float2 GetXY(float4 v)
         {
+            if(v.z < - v.w)
+            {
+                return new float2(v.w / v.x, v.w / v.y);
+            }
             return new float2(v.x / v.w, v.y / v.w);
         }
 
         private float3 GetXYZ(float4 v)
         {
+            if (v.z < -v.w)
+            {
+                return new float3(v.w / v.x, v.w / v.y, v.z / v.w);
+            }
             return new float3(v.x / v.w, v.y / v.w, v.z / v.w);
         }
 
@@ -600,6 +608,8 @@ public class WireframeRenderer : MonoBehaviour
     private NativeArray<int> globalTriangles;
     private int globalDrawnEdgeCount;
     private int globalTriangleCount;
+    private int globalVertexOffset;
+    private int globalDynamicVertexOffset;
 
     public void AddMesh(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer, float edgeAngleLimit)
     {
@@ -723,6 +733,7 @@ public class WireframeRenderer : MonoBehaviour
 
         globalDrawnEdgeCount = 0;
         globalTriangleCount = 0;
+        globalDynamicVertexOffset = globalVertexOffset;
 
         for (int i = 0; i < meshCaches.Count; ++i)
         {
@@ -779,7 +790,7 @@ public class WireframeRenderer : MonoBehaviour
         }
         meshCaches.Clear();
 
-        int globalVertexOffset = 0;
+        globalVertexOffset = 0;
 
         foreach (StaticObject staticObject in staticObjects)
         {
@@ -806,6 +817,33 @@ public class WireframeRenderer : MonoBehaviour
         }
     }
 
+    private void Swap<T>(ref T a, ref T b)
+    {
+        T temp = a;
+        a = b;
+        b = temp;
+    }
+
+    private bool FrontOfNear(int vertexIdx)
+    {
+        float4 v = globalClipVertices[vertexIdx];
+        return v.z < -v.w;
+    }
+
+    private int AddVertex(float4 clipPosition)
+    {
+        int i = globalDynamicVertexOffset++;
+        globalClipVertices[i] = clipPosition;
+        return i;
+    }
+
+    private void OutputTri(int idxA, int idxB, int idxC)
+    {
+        globalTriangles[globalTriangleCount++] = idxA;
+        globalTriangles[globalTriangleCount++] = idxB;
+        globalTriangles[globalTriangleCount++] = idxC;
+    }
+
     private void AddTriangle(int cacheIndex, int triangleIdx)
     {
         if (globalTriangleCount + 3 > globalTriangles.Length)
@@ -813,14 +851,78 @@ public class WireframeRenderer : MonoBehaviour
             return;
         }
         MeshCache meshCache = meshCaches[cacheIndex];
-        for (int i = 0; i < 3; ++i)
+
+        int a = meshCache.triangles[triangleIdx + 0] + meshCache.globalVertexOffset;
+        int b = meshCache.triangles[triangleIdx + 1] + meshCache.globalVertexOffset;
+        int c = meshCache.triangles[triangleIdx + 2] + meshCache.globalVertexOffset;
+
+        if(FrontOfNear(a) && FrontOfNear(b) && FrontOfNear(c))
         {
-            int globalVertexIdx = meshCache.triangles[triangleIdx + i] + meshCache.globalVertexOffset;
-            globalTriangles[globalTriangleCount++] = globalVertexIdx;
-            if (globalVertexIdx >= globalClipVertices.Length)
-            {
-                Debug.LogError("Triangle index too high");
-            }
+            // Completely culled by near plane.
+            return;
+        }
+
+
+        if (!FrontOfNear(a) && !FrontOfNear(b) && !FrontOfNear(c))
+        {
+            // Not culled by near plane.
+            OutputTri(a, b, c);
+            // OutputTri(AddVertex(globalClipVertices[a]), AddVertex(globalClipVertices[b]), AddVertex(globalClipVertices[c]));
+            return;
+        }
+
+        while(!(!FrontOfNear(a) && (!FrontOfNear(b) || FrontOfNear(c))))
+        {
+            Swap(ref a, ref c); // a, b, c -> c, b, a
+            Swap(ref b, ref c); // c, b, a -> c, a, b
+        }
+
+        /*
+        // Make sure that A (and B if possible) are the vertices behind the near plane.
+        if (FrontOfNear(a) || (FrontOfNear(b) && !FrontOfNear(c))) {
+            // Rotate first time
+            Swap(ref a, ref c); // a, b, c -> c, b, a
+            Swap(ref b, ref c); // a, b, c -> c, a, b
+        }
+        if (FrontOfNear(a))
+        {
+            // Rotate second time
+            Swap(ref a, ref c); 
+            Swap(ref b, ref c); 
+        }
+        */
+
+        // TODO: swaps may break winding order, should cycle around to maintain winding order
+        if(FrontOfNear(b)) /// TODO: edge will be almost shared without being detected because vert is duplicated
+        {
+            Debug.Assert(!FrontOfNear(a), "a");
+            Debug.Assert(FrontOfNear(b), "b");
+            Debug.Assert(FrontOfNear(c), "c");
+            // B and C in front of near plane.
+            float4 v0 = ClipFront(a, b);
+            float4 v1 = ClipFront(a, c);
+
+            OutputTri(a, AddVertex(v0), AddVertex(v1));
+            // OutputTri(a, AddVertex(v1), AddVertex(v0));
+        }
+        else // TODO: check winding order
+        {
+            Debug.Assert(!FrontOfNear(a), "a");
+            Debug.Assert(!FrontOfNear(b), "b");
+            Debug.Assert(FrontOfNear(c), "c");
+
+            // C in front of near plane.
+            float4 v0 = ClipFront(a, c);
+            float4 v1 = ClipFront(b, c);
+
+            int v0i = AddVertex(v0);
+            int v1i = AddVertex(v1);
+
+            OutputTri(a, b, v0i);
+            OutputTri(v0i, b, v1i);
+
+            // OutputTri(b, a, v0i);
+            // OutputTri(b, v0i, v1i);
         }
     }
 
@@ -918,7 +1020,7 @@ public class WireframeRenderer : MonoBehaviour
         float3 b3 = new float3(b.x / b.w, b.y / b.w, b.z / b.w);
         float3 c3 = new float3(c.x / c.w, c.y / c.w, c.z / c.w);
 
-        return math.cross(b3 - a3, c3 - a3).z < 0
+        return math.cross(b3 - a3, c3 - a3).z != 0
             && !(a.z < -a.w && b.z < -b.w && c.z < -c.w) && !(a.z > a.w && b.z > b.w && c.z > c.w) // TODO: add proper frustrum cull
             && !(a.y < -a.w && b.y < -b.w && c.y < -c.w) && !(a.y > a.w && b.y > b.w && c.y > c.w) //
             && !(a.x < -a.w && b.x < -b.w && c.x < -c.w) && !(a.x > a.w && b.x > b.w && c.x > c.w);
@@ -928,6 +1030,23 @@ public class WireframeRenderer : MonoBehaviour
     {
         Vector2 target = GetScopePoint(cacheIndex, triangleListIdx);
         renderDevice.SetPoint(target);
+    }
+
+    // Assumes A is behind the front plane and b is in front
+    private float4 ClipFront(int iB, int iA)
+    {
+        float4 a = globalClipVertices[iA];
+        float4 b = globalClipVertices[iB];
+
+        // Solve intersection with near plane
+        float tNear = (a.z + a.w) / (a.z + a.w - b.z - b.w);
+        Debug.Assert(a.w < b.w);
+        Debug.Assert(0.0f < tNear);
+        Debug.Assert(tNear < 1.0f);
+        tNear += 0.001f;
+
+        // Interpolate and output results.
+        return (1 - tNear) * a + tNear * b;
     }
 
     private static bool ClipCylinder(ref float4 a, ref float4 b)
