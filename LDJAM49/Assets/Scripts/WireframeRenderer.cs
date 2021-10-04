@@ -71,30 +71,33 @@ public class WireframeRenderer : MonoBehaviour
 
     private class EdgeCache
     {
-        private Dictionary<Tuple<int, int>, int> vertexPairToEdge;
-        private List<Tuple<int, int>> edgeTriangles;
-        private float[] edgeAngles;
+        public List<ValueTuple<int, int>> edgeVertices;
+        public float[] edgeAngles;
+        public List<ValueTuple<int, int>> edgeTriangles;
+        private Dictionary<ValueTuple<int, int>, int> vertexPairToEdge;
 
         public EdgeCache(int maxEdgeCount)
         {
-            edgeTriangles = new List<Tuple<int, int>>(maxEdgeCount);
-            vertexPairToEdge = new Dictionary<Tuple<int, int>, int>(maxEdgeCount);
+            edgeTriangles = new List<ValueTuple<int, int>>(maxEdgeCount);
+            edgeVertices = new List<ValueTuple<int, int>>(maxEdgeCount);
+            vertexPairToEdge = new Dictionary<ValueTuple<int, int>, int>(maxEdgeCount);
         }
 
         public void AddEdge(int vertexA, int vertexB, int triangle)
         {
-            Tuple<int, int> vertexTuple = GetVertexTuple(vertexA, vertexB);
+            ValueTuple<int, int> vertexValueTuple = GetVertexValueTuple(vertexA, vertexB);
             int edge = -1;
-            if (!vertexPairToEdge.TryGetValue(vertexTuple, out edge))
+            if (!vertexPairToEdge.TryGetValue(vertexValueTuple, out edge))
             {
                 edge = edgeTriangles.Count;
-                vertexPairToEdge[vertexTuple] = edge;
-                edgeTriangles.Add(new Tuple<int, int>(triangle, -1));
+                vertexPairToEdge[vertexValueTuple] = edge;
+                edgeTriangles.Add(new ValueTuple<int, int>(triangle, -1));
+                edgeVertices.Add(vertexValueTuple);
                 // Debug.LogFormat("AddEdge {0} {1} new", vertexA, vertexB);
             }
             else
             {
-                edgeTriangles[edge] = new Tuple<int, int>(edgeTriangles[edge].Item1, triangle);
+                edgeTriangles[edge] = new ValueTuple<int, int>(edgeTriangles[edge].Item1, triangle);
                 // Debug.LogFormat("AddEdge {0} {1} found", vertexA, vertexB);
             }
         }
@@ -137,16 +140,16 @@ public class WireframeRenderer : MonoBehaviour
 
         public float GetEdgeAngle(int vertexA, int vertexB)
         {
-            Tuple<int, int> tuple = GetVertexTuple(vertexA, vertexB);
-            int edge = vertexPairToEdge[tuple];
+            ValueTuple<int, int> ValueTuple = GetVertexValueTuple(vertexA, vertexB);
+            int edge = vertexPairToEdge[ValueTuple];
             float angle = edgeAngles[edge];
             // Debug.LogFormat("GetEdgeAngle({0}, {1}) -> edge={2} -> angle={3}", vertexA, vertexB, edge, angle);
             return angle;
         }
 
-        private Tuple<int, int> GetVertexTuple(int vertexA, int vertexB)
+        private ValueTuple<int, int> GetVertexValueTuple(int vertexA, int vertexB)
         {
-            return new Tuple<int, int>(Math.Min(vertexA, vertexB), Math.Max(vertexA, vertexB));
+            return new ValueTuple<int, int>(Math.Min(vertexA, vertexB), Math.Max(vertexA, vertexB));
         }
     }
 
@@ -162,6 +165,9 @@ public class WireframeRenderer : MonoBehaviour
         public EdgeCache edgeCache { get; private set; }
         public float edgeAngleLimit { get; private set; }
         public int globalVertexOffset { get; private set; }
+
+        public bool[] triangleFacesCameraCache { get; private set; }
+
         private NativeArray<float3> nativeVerticesLocal; // { get; private set; }
         public NativeArray<float4> nativeVerticesClip; // { get; private set; }
 
@@ -191,6 +197,7 @@ public class WireframeRenderer : MonoBehaviour
 
             nativeVerticesLocal = new NativeArray<float3>(vertices.Length, Allocator.Persistent);
             nativeVerticesClip = new NativeArray<float4>(vertices.Length, Allocator.Persistent);
+            triangleFacesCameraCache = new bool[mesh.triangles.Length / 3];
 
             for (int i = 0; i < vertices.Length; ++i)
             {
@@ -259,7 +266,7 @@ public class WireframeRenderer : MonoBehaviour
 
         private float2 GetXY(float4 v)
         {
-            if(v.z < - v.w)
+            if (v.z < -v.w)
             {
                 return new float2(v.w / v.x, v.w / v.y);
             }
@@ -457,6 +464,7 @@ public class WireframeRenderer : MonoBehaviour
                             intersections.Add(new float2(999.0f, -1.0f));
                             continue;
                         }
+
                     }
                     else if (hitA.x > 0 && hitB.x < 1)
                     {
@@ -792,7 +800,8 @@ public class WireframeRenderer : MonoBehaviour
 
     private void UpdateCache()
     {
-        //Debug.Log("Update mesh cache.");
+        float startTime = Time.realtimeSinceStartup;
+
         for (int i = 0; i < meshCaches.Count; ++i)
         {
             meshCaches[i].Dispose();
@@ -813,6 +822,8 @@ public class WireframeRenderer : MonoBehaviour
             globalVertexOffset += meshCaches[meshCaches.Count - 1].vertices.Length;
         }
         cacheRequiresUpdate = false;
+
+        Debug.LogFormat("Updated mesh cache in {0}ms", 1000.0f * (Time.realtimeSinceStartup - startTime));
     }
 
     private void DrawLines(int cacheIndex)
@@ -865,7 +876,7 @@ public class WireframeRenderer : MonoBehaviour
         int b = meshCache.triangles[triangleIdx + 1] + meshCache.globalVertexOffset;
         int c = meshCache.triangles[triangleIdx + 2] + meshCache.globalVertexOffset;
 
-        if(FrontOfNear(a) && FrontOfNear(b) && FrontOfNear(c))
+        if (FrontOfNear(a) && FrontOfNear(b) && FrontOfNear(c))
         {
             // Completely culled by near plane.
             return;
@@ -880,7 +891,7 @@ public class WireframeRenderer : MonoBehaviour
             return;
         }
 
-        while(!(!FrontOfNear(a) && (!FrontOfNear(b) || FrontOfNear(c))))
+        while (!(!FrontOfNear(a) && (!FrontOfNear(b) || FrontOfNear(c))))
         {
             Swap(ref a, ref c); // a, b, c -> c, b, a
             Swap(ref b, ref c); // c, b, a -> c, a, b
@@ -902,7 +913,7 @@ public class WireframeRenderer : MonoBehaviour
         */
 
         // TODO: swaps may break winding order, should cycle around to maintain winding order
-        if(FrontOfNear(b)) /// TODO: edge will be almost shared without being detected because vert is duplicated
+        if (FrontOfNear(b)) /// TODO: edge will be almost shared without being detected because vert is duplicated
         {
             // B and C in front of near plane.
             float4 v0 = ClipFront(a, b);
@@ -928,17 +939,16 @@ public class WireframeRenderer : MonoBehaviour
         }
     }
 
-    private void AddLine(int cacheIndex, int triangleIdxA, int triangleIdxB)
+    private void AddLine(int cacheIndex, int indexA, int indexB)
     {
         if (globalDrawnEdgeCount + 2 > globalDrawnEdges.Length)
         {
             return;
         }
         MeshCache meshCache = meshCaches[cacheIndex];
-        int indexA = meshCache.triangles[triangleIdxA] + meshCache.globalVertexOffset;
-        int indexB = meshCache.triangles[triangleIdxB] + meshCache.globalVertexOffset;
-        globalDrawnEdges[globalDrawnEdgeCount++] = indexA;
-        globalDrawnEdges[globalDrawnEdgeCount++] = indexB;
+
+        globalDrawnEdges[globalDrawnEdgeCount++] = indexA + meshCache.globalVertexOffset;
+        globalDrawnEdges[globalDrawnEdgeCount++] = indexB + meshCache.globalVertexOffset;
 
         if (indexA >= globalClipVertices.Length || indexB >= globalClipVertices.Length)
         {
@@ -960,9 +970,11 @@ public class WireframeRenderer : MonoBehaviour
         MeshCache meshCache = meshCaches[cacheIndex];
         for (int i = 0; i < meshCache.triangles.Length; i += 3)
         {
-            if (TriangleFacesCamera(cacheIndex, i))
+            meshCache.triangleFacesCameraCache[i / 3] = TriangleFacesCamera(cacheIndex, i);
+            if (meshCache.triangleFacesCameraCache[i / 3])
             {
                 AddTriangle(cacheIndex, i);
+                /*
                 if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i], meshCache.triangles[i + 1]) >= meshCache.edgeAngleLimit)
                 {
                     AddLine(cacheIndex, i + 0, i + 1);
@@ -974,6 +986,19 @@ public class WireframeRenderer : MonoBehaviour
                 if (meshCache.edgeCache.GetEdgeAngle(meshCache.triangles[i + 2], meshCache.triangles[i + 0]) >= meshCache.edgeAngleLimit)
                 {
                     AddLine(cacheIndex, i + 2, i + 0);
+                }
+                */
+            }
+        }
+        for (int i = 0; i < meshCache.edgeCache.edgeVertices.Count; ++i)
+        {
+            if (meshCache.edgeCache.edgeAngles[i] >= meshCache.edgeAngleLimit)
+            {
+                var edgeTriangles = meshCache.edgeCache.edgeTriangles[i];
+                if (meshCache.triangleFacesCameraCache[edgeTriangles.Item1] || (edgeTriangles.Item2 != -1 && meshCache.triangleFacesCameraCache[edgeTriangles.Item2]))
+                {
+                    ValueTuple<int, int> vertexPair = meshCache.edgeCache.edgeVertices[i];
+                    AddLine(cacheIndex, vertexPair.Item1, vertexPair.Item2);
                 }
             }
         }
@@ -1022,7 +1047,7 @@ public class WireframeRenderer : MonoBehaviour
         float3 b3 = new float3(b.x / b.w, b.y / b.w, b.z / b.w);
         float3 c3 = new float3(c.x / c.w, c.y / c.w, c.z / c.w);
 
-        return math.cross(b3 - a3, c3 - a3).z != 0
+        return math.cross(b3 - a3, c3 - a3).z < 0
             && !(a.z < -a.w && b.z < -b.w && c.z < -c.w) && !(a.z > a.w && b.z > b.w && c.z > c.w) // TODO: add proper frustrum cull
             && !(a.y < -a.w && b.y < -b.w && c.y < -c.w) && !(a.y > a.w && b.y > b.w && c.y > c.w) //
             && !(a.x < -a.w && b.x < -b.w && c.x < -c.w) && !(a.x > a.w && b.x > b.w && c.x > c.w);
