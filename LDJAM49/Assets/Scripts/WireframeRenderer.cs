@@ -210,7 +210,7 @@ public class WireframeRenderer : MonoBehaviour
             }
         }
 
-        public JobHandle UpdateClipVertices(float4x4 localToClip, NativeArray<float4> globalVerticesClip)
+        public JobHandle UpdateClipVertices(float4x4 localToClip, NativeArray<float4> globalVerticesClip, float randomOffset, Unity.Mathematics.Random random)
         {
             LocalToClipJob job = new LocalToClipJob
             {
@@ -218,7 +218,9 @@ public class WireframeRenderer : MonoBehaviour
                 localToClip = localToClip,
                 // clipVertices = nativeVerticesClip
                 destOffset = globalVertexOffset,
-                clipVertices = globalVerticesClip
+                clipVertices = globalVerticesClip,
+                randomOffset = randomOffset,
+                random = random
             };
             return job.Schedule();
         }
@@ -582,6 +584,11 @@ public class WireframeRenderer : MonoBehaviour
         [ReadOnly]
         public int destOffset;
 
+        [ReadOnly]
+        public float randomOffset;
+
+        public Unity.Mathematics.Random random;
+
         [WriteOnly]
         public NativeArray<float4> clipVertices;
 
@@ -589,8 +596,7 @@ public class WireframeRenderer : MonoBehaviour
         {
             for (int i = 0; i < localVertices.Length; ++i)
             {
-
-                float3 offset = 0.0f; //  UnityEngine.Random.onUnitSphere * randomOffset;
+                float3 offset = random.NextFloat3Direction() * randomOffset;
                 float3 localPoint = localVertices[i] + offset;
                 float4 clipPoint = math.mul(localToClip, float4(localPoint.x, localPoint.y, localPoint.z, 1.0f));
                 clipVertices[i + destOffset] = clipPoint;
@@ -610,6 +616,7 @@ public class WireframeRenderer : MonoBehaviour
     private int globalTriangleCount;
     private int globalVertexOffset;
     private int globalDynamicVertexOffset;
+    private Unity.Mathematics.Random random;
 
     public void AddMesh(RenderType renderType, MeshFilter meshFilter, MeshRenderer meshRenderer, float edgeAngleLimit)
     {
@@ -685,6 +692,7 @@ public class WireframeRenderer : MonoBehaviour
         globalTriangles = new NativeArray<int>(maxTriangles, Allocator.Persistent);
         globalDrawnEdges = new NativeArray<int>(maxTriangles * 6, Allocator.Persistent);
         globalDrawnEdgesClipped = new NativeList<float4>(Allocator.Persistent);
+        random = Unity.Mathematics.Random.CreateFromIndex(1337);
         // globalEdgeIntersectionsOffset = new NativeList<int>(Allocator.Persistent);
     }
 
@@ -719,12 +727,11 @@ public class WireframeRenderer : MonoBehaviour
             UpdateCache();
         }
 
-
         NativeArray<JobHandle> jobHandles = new NativeArray<JobHandle>(meshCaches.Count, Allocator.Temp);
         for (int i = 0; i < meshCaches.Count; ++i)
         {
             float4x4 localToClip = math.mul(renderCamera.projectionMatrix, math.mul(renderCamera.worldToCameraMatrix, meshCaches[i].transform.localToWorldMatrix));
-            jobHandles[i] = meshCaches[i].UpdateClipVertices(localToClip, globalClipVertices);
+            jobHandles[i] = meshCaches[i].UpdateClipVertices(localToClip, globalClipVertices, randomOffset, random);
             jobHandles[i].Complete();
         }
         // JobHandle.ScheduleBatchedJobs();
@@ -734,6 +741,8 @@ public class WireframeRenderer : MonoBehaviour
         globalDrawnEdgeCount = 0;
         globalTriangleCount = 0;
         globalDynamicVertexOffset = globalVertexOffset;
+
+        random.InitState((uint)Time.frameCount);
 
         for (int i = 0; i < meshCaches.Count; ++i)
         {
@@ -895,9 +904,6 @@ public class WireframeRenderer : MonoBehaviour
         // TODO: swaps may break winding order, should cycle around to maintain winding order
         if(FrontOfNear(b)) /// TODO: edge will be almost shared without being detected because vert is duplicated
         {
-            Debug.Assert(!FrontOfNear(a), "a");
-            Debug.Assert(FrontOfNear(b), "b");
-            Debug.Assert(FrontOfNear(c), "c");
             // B and C in front of near plane.
             float4 v0 = ClipFront(a, b);
             float4 v1 = ClipFront(a, c);
@@ -907,10 +913,6 @@ public class WireframeRenderer : MonoBehaviour
         }
         else // TODO: check winding order
         {
-            Debug.Assert(!FrontOfNear(a), "a");
-            Debug.Assert(!FrontOfNear(b), "b");
-            Debug.Assert(FrontOfNear(c), "c");
-
             // C in front of near plane.
             float4 v0 = ClipFront(a, c);
             float4 v1 = ClipFront(b, c);
@@ -1040,9 +1042,6 @@ public class WireframeRenderer : MonoBehaviour
 
         // Solve intersection with near plane
         float tNear = (a.z + a.w) / (a.z + a.w - b.z - b.w);
-        Debug.Assert(a.w < b.w);
-        Debug.Assert(0.0f < tNear);
-        Debug.Assert(tNear < 1.0f);
         tNear += 0.001f;
 
         // Interpolate and output results.
