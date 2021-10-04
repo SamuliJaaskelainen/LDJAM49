@@ -608,6 +608,7 @@ public class WireframeRenderer : MonoBehaviour
 
         staticObjects.CollectionChanged += NotifyCacheForUpdate;
         skinnedObjects.CollectionChanged += NotifyCacheForUpdate;
+        useAudioRender = !Menu.useEmulator;
     }
 
     private void Start()
