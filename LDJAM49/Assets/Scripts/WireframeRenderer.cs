@@ -28,6 +28,7 @@ public class WireframeRenderer : MonoBehaviour
     public float randomOffset = 0.0f;
     [SerializeField] private float intensity = 0.35f;
     [SerializeField] private bool useLineToTriangleClipping = false;
+    [SerializeField] private bool logVerbose = false;
 
     private class RenderObject
     {
@@ -684,6 +685,7 @@ public class WireframeRenderer : MonoBehaviour
 
         random.InitState((uint)Time.frameCount);
 
+        double startTime = Time.realtimeSinceStartupAsDouble;
         for (int i = 0; i < meshCaches.Count; ++i)
         {
             switch (meshCaches[i].renderType)
@@ -697,7 +699,12 @@ public class WireframeRenderer : MonoBehaviour
                     break;
             }
         }
+        if (logVerbose)
+        {
+            Debug.LogFormat("Time drawing: {0}ms", 1000.0 * (Time.realtimeSinceStartupAsDouble - startTime));
+        }
 
+        startTime = Time.realtimeSinceStartupAsDouble;
         if (useLineToTriangleClipping)
         {
             LineTriangleClipJob job = new LineTriangleClipJob
@@ -712,8 +719,17 @@ public class WireframeRenderer : MonoBehaviour
             };
             job.Schedule().Complete();
         }
+        if (logVerbose)
+        {
+            Debug.LogFormat("Time clipping: {0}ms", 1000.0 * (Time.realtimeSinceStartupAsDouble - startTime));
+        }
 
+        startTime = Time.realtimeSinceStartupAsDouble;
         GlobalRender();
+        if (logVerbose)
+        {
+            Debug.LogFormat("Time rendering: {0}ms", 1000.0 * (Time.realtimeSinceStartupAsDouble - startTime));
+        }
 
         renderDevice.WaitSync();
         renderDevice.Submit();
@@ -911,7 +927,7 @@ public class WireframeRenderer : MonoBehaviour
         {
             if (meshCache.edgeCache.edgeAngles[i] >= meshCache.edgeAngleLimit)
             {
-                var edgeTriangles = meshCache.edgeCache.edgeTriangles[i];
+                (int, int) edgeTriangles = meshCache.edgeCache.edgeTriangles[i];
                 if (meshCache.triangleFacesCameraCache[edgeTriangles.Item1] || (edgeTriangles.Item2 != -1 && meshCache.triangleFacesCameraCache[edgeTriangles.Item2]))
                 {
                     ValueTuple<int, int> vertexPair = meshCache.edgeCache.edgeVertices[i];
@@ -1105,7 +1121,10 @@ public class WireframeRenderer : MonoBehaviour
 
     private void GlobalRender()
     {
-        Debug.LogFormat("Performing global render for {0}/{1} edges, {2} triangles", globalDrawnEdgesClipped, globalDrawnEdgeCount / 2, globalTriangleCount / 3);
+        if (logVerbose)
+        {
+            Debug.LogFormat("Performing global render for {0}/{1} edges, {2} triangles", globalDrawnEdgesClipped, globalDrawnEdgeCount / 2, globalTriangleCount / 3);
+        }
         if (useLineToTriangleClipping)
         {
             for (int i = 0; i < globalDrawnEdgesClipped.Length; i += 2)
