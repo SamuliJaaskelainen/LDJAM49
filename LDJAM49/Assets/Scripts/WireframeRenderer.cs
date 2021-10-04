@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Runtime.CompilerServices;
-using Unity.Collections.LowLevel.Unsafe;
 using Unity.Burst;
 using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
 using UnityEngine;
@@ -78,13 +77,13 @@ public class WireframeRenderer : MonoBehaviour
 
         public EdgeCache(int maxEdgeCount)
         {
-            this.edgeTriangles = new List<Tuple<int, int>>(maxEdgeCount);
-            this.vertexPairToEdge = new Dictionary<Tuple<int, int>, int>(maxEdgeCount);
+            edgeTriangles = new List<Tuple<int, int>>(maxEdgeCount);
+            vertexPairToEdge = new Dictionary<Tuple<int, int>, int>(maxEdgeCount);
         }
 
         public void AddEdge(int vertexA, int vertexB, int triangle)
         {
-            var vertexTuple = GetVertexTuple(vertexA, vertexB);
+            Tuple<int, int> vertexTuple = GetVertexTuple(vertexA, vertexB);
             int edge = -1;
             if (!vertexPairToEdge.TryGetValue(vertexTuple, out edge))
             {
@@ -138,7 +137,7 @@ public class WireframeRenderer : MonoBehaviour
 
         public float GetEdgeAngle(int vertexA, int vertexB)
         {
-            var tuple = GetVertexTuple(vertexA, vertexB);
+            Tuple<int, int> tuple = GetVertexTuple(vertexA, vertexB);
             int edge = vertexPairToEdge[tuple];
             float angle = edgeAngles[edge];
             // Debug.LogFormat("GetEdgeAngle({0}, {1}) -> edge={2} -> angle={3}", vertexA, vertexB, edge, angle);
@@ -178,7 +177,7 @@ public class WireframeRenderer : MonoBehaviour
             this.transform = transform;
             this.renderType = renderType;
             this.skinIndex = skinIndex;
-            this.edgeCache = new EdgeCache(vertices.Length);
+            edgeCache = new EdgeCache(vertices.Length);
             this.edgeAngleLimit = edgeAngleLimit;
             this.globalVertexOffset = globalVertexOffset;
 
@@ -213,7 +212,7 @@ public class WireframeRenderer : MonoBehaviour
 
         public JobHandle UpdateClipVertices(float4x4 localToClip, NativeArray<float4> globalVerticesClip)
         {
-            var job = new LocalToClipJob
+            LocalToClipJob job = new LocalToClipJob
             {
                 localVertices = nativeVerticesLocal,
                 localToClip = localToClip,
@@ -248,8 +247,6 @@ public class WireframeRenderer : MonoBehaviour
         // public NativeArray<NativeList<float2>> edgeIntersections;
         // public NativeList<int> edgeIntersectionsOffset;
 
-        public UnsafeList<UnsafeList<float2>> edgeIntersections;
-
         [ReadOnly]
         public int edgeVertexCount;
 
@@ -268,13 +265,7 @@ public class WireframeRenderer : MonoBehaviour
             return new float3(v.x / v.w, v.y / v.w, v.z / v.w);
         }
 
-        private void LineSegmentIntersection(float2 a0, float2 a1, float2 b0, float2 b1, out float tA, out float tB)
-        {
-            tA = 0.0f;
-            tB = 0.0f;
-        }
-
-        float2 intersectST(float2 p0, float2 p1, float2 p2, float2 p3)
+        private float2 intersectST(float2 p0, float2 p1, float2 p2, float2 p3)
         {
             float2 s1 = p1 - p0;
             float2 s2 = p3 - p2;
@@ -282,31 +273,40 @@ public class WireframeRenderer : MonoBehaviour
             float s = (s2.x * (p0.y - p2.y) - s2.y * (p0.x - p2.x)) / (-s2.x * s1.y + s1.x * s2.y);
             float t = (-s1.y * (p0.x - p2.x) + s1.x * (p0.y - p2.y)) / (-s2.x * s1.y + s1.x * s2.y);
 
+            float e = 0.0f; // math.EPS1e-5f;
+            s += (s < 0.5f ? e : -e);
+            t += (t < 0.5f ? e : -e);
+
             return new float2(s, t);
         }
 
-        float2 intersectST(int iEdge, int iTriangleA, int iTriangleB, ref bool ok)
+        private float2 intersectST(float4 a0, float4 a1, int iTriangleA, int iTriangleB, ref bool ok)
         {
-            float4 a0 = clipVertices[drawnEdges[iEdge]];
-            float4 a1 = clipVertices[drawnEdges[iEdge + 1]];
+            // float4 a0 = clipVertices[drawnEdges[iEdge]];
+            // float4 a1 = clipVertices[drawnEdges[iEdge + 1]];
 
             float4 b0 = clipVertices[triangles[iTriangleA]];
             float4 b1 = clipVertices[triangles[iTriangleB]];
 
-            if(math.all(a0 == b0) || math.all(a0 == b1) || math.all(a1 == b0) || math.all(a1 == b1))
+            // if (!ClipCylinder(ref b0, ref b1)) // TODO: could be cached per triangle
+            // {
+            //    return float2(-1.0f, -1.0f);
+            // }
+
+            if ((math.all(a0 == b0) && math.all(a1 == b1)) || math.all(a0 == b1) && math.all(a1 == b0))
             {
-                ok = false;
+                ok = false; // Same segment
             }
 
             return intersectST(GetXY(a0), GetXY(a1), GetXY(b0), GetXY(b1));
         }
 
-        bool pointInTriangle(float2 p, float2 a, float2 b, float2 c)
+        private bool pointInTriangle(float2 p, float2 a, float2 b, float2 c)
         {
-            var area = 1 / 2 * (-b.y * c.x + a.y * (-b.x + c.x) + a.x * (b.y - c.y) + b.x * c.y);
-            var sign = area < 0 ? -1 : 1;
-            var s = (a.y * c.x - a.x * c.y + (c.y - a.y) * p.x + (a.x - c.x) * p.y) * sign;
-            var t = (a.x * b.y - a.y * b.x + (a.y - b.y) * p.x + (b.x - a.x) * p.y) * sign;
+            float area = 1 / 2 * (-b.y * c.x + a.y * (-b.x + c.x) + a.x * (b.y - c.y) + b.x * c.y);
+            int sign = area < 0 ? -1 : 1;
+            float s = (a.y * c.x - a.x * c.y + (c.y - a.y) * p.x + (a.x - c.x) * p.y) * sign;
+            float t = (a.x * b.y - a.y * b.x + (a.y - b.y) * p.x + (b.x - a.x) * p.y) * sign;
             return s > 0 && t > 0 && (s + t) < 2 * area * sign;
         }
 
@@ -322,9 +322,21 @@ public class WireframeRenderer : MonoBehaviour
             }
         }
 
-        bool hitsTriangle(float2 st)
+        private bool hitsTriangle(float2 st)
         {
             return (0 < st.y && st.y < 1);
+        }
+
+        private bool isPointBehindTriangle(float4 p, int iTriangle)
+        {
+            // Line segment is inside triangle.
+            float3 t0 = GetXYZ(clipVertices[triangles[iTriangle + 0]]);
+            float3 t1 = GetXYZ(clipVertices[triangles[iTriangle + 1]]);
+            float3 t2 = GetXYZ(clipVertices[triangles[iTriangle + 2]]);
+            float3 p3 = GetXYZ(p);
+            float3 normal = math.cross(t1 - t0, t2 - t0);
+            float epsilon = 0.0f; // 1e-5f;
+            return math.dot(normal, p3 - t0) * normal.z > -epsilon;
         }
 
         public void Execute()
@@ -340,22 +352,31 @@ public class WireframeRenderer : MonoBehaviour
             NativeList<float2> intersections = new NativeList<float2>(Allocator.Temp);
             for (int iEdge = 0; iEdge < edgeVertexCount; iEdge += 2)
             {
+                float4 a = clipVertices[drawnEdges[iEdge]];
+                float4 b = clipVertices[drawnEdges[iEdge + 1]];
+                if(!ClipCylinder(ref a, ref b))
+                {
+                    continue;
+                }
+
                 intersections.Clear();
-                intersections.Add(new Unity.Mathematics.float2(0.0f, 0.0f));
-                intersections.Add(new Unity.Mathematics.float2(1.0f, 0.0f));
+                intersections.Add(new float2(0.0f, 0.0f));
+                intersections.Add(new float2(1.0f, 0.0f));
                 for (int iTriangle = 0; iTriangle < triangleVertexCount; iTriangle += 3)
                 {
                     bool ok = true;
-                    float2 st0 = intersectST(iEdge, iTriangle + 0, iTriangle + 1, ref ok);
-                    float2 st1 = intersectST(iEdge, iTriangle + 1, iTriangle + 2, ref ok);
-                    float2 st2 = intersectST(iEdge, iTriangle + 2, iTriangle + 0, ref ok);
+                    float2 st0 = intersectST(a, b, iTriangle + 0, iTriangle + 1, ref ok);
+                    float2 st1 = intersectST(a, b, iTriangle + 1, iTriangle + 2, ref ok);
+                    float2 st2 = intersectST(a, b, iTriangle + 2, iTriangle + 0, ref ok);
 
-                    if(!ok)
+                    if (!ok)
                     {
                         continue;
                     }
 
-                    if ((hitsTriangle(st0) ? 1 : 0) + (hitsTriangle(st1) ? 1 : 0) + (hitsTriangle(st2) ? 1 : 0) < 2)
+                    int hitCount = (hitsTriangle(st0) ? 1 : 0) + (hitsTriangle(st1) ? 1 : 0) + (hitsTriangle(st2) ? 1 : 0);
+
+                    if (hitCount == 0)
                     {
                         continue;
                     }
@@ -378,6 +399,23 @@ public class WireframeRenderer : MonoBehaviour
                         hitB = st1;
                     }
 
+                    if (hitCount == 1)
+                    {
+                        continue;
+                        if (!hitsTriangle(hitA))
+                        {
+                            hitA = hitB;
+                        }
+                        // May occur due to triangle segments being clipped.
+                        // Nuke as a test
+                        if (isPointBehindTriangle(a, iTriangle) || isPointBehindTriangle(b, iTriangle))
+                        {
+                            intersections.Add(new float2(-999.0f, 1.0f));
+                            intersections.Add(new float2(999.0f, -1.0f));
+                        }
+                        continue;
+                    }
+
                     if (hitA.x > hitB.x)
                     {
                         float2 temp = hitA;
@@ -393,7 +431,7 @@ public class WireframeRenderer : MonoBehaviour
 
                     // Infinite line and triangle intersect.
 
-                    if(hitA.x > 1 || hitB.x < 0)
+                    if (hitA.x > 1 || hitB.x < 0)
                     {
                         // Line segment and triangle do not overlap.
                         continue;
@@ -403,12 +441,7 @@ public class WireframeRenderer : MonoBehaviour
                     if (hitA.x < 0 && hitB.x > 1)
                     {
                         // Line segment is inside triangle.
-                        float3 t0 = GetXYZ(clipVertices[triangles[iTriangle + 0]]);
-                        float3 t1 = GetXYZ(clipVertices[triangles[iTriangle + 1]]);
-                        float3 t2 = GetXYZ(clipVertices[triangles[iTriangle + 2]]);
-                        float3 p = GetXYZ(clipVertices[drawnEdges[iEdge]]);
-                        float3 normal = math.cross(t1 - t0, t2 - t0);
-                        if (math.dot(normal, p - t0) < 0)
+                        if (isPointBehindTriangle(a, iTriangle))
                         {
                             intersections.Add(new float2(-999.0f, 1.0f));
                             intersections.Add(new float2(999.0f, -1.0f));
@@ -417,20 +450,33 @@ public class WireframeRenderer : MonoBehaviour
                     }
                     else if (hitA.x > 0 && hitB.x < 1)
                     {
-                        intersections.Add(new float2(hitA.x, 1.0f));
-                        intersections.Add(new float2(hitB.x, -1.0f));
                         // Line segment bisects triangle.
+                        float4 hitPoint = (1.0f - hitA.x) * a + hitA.x * b;
+                        if (isPointBehindTriangle(hitPoint, iTriangle))
+                        {
+                            intersections.Add(new float2(hitA.x, 1.0f));
+                            intersections.Add(new float2(hitB.x, -1.0f));
+                            continue;
+                        }
                     }
                     else if (hitA.x < 0)
                     {
                         // Line segment starts inside triangle
-                        intersections.Add(new float2(-999.0f, 1.0f));
-                        intersections.Add(new float2(hitB.x, -1.0f));
+                        if (isPointBehindTriangle(a, iTriangle))
+                        {
+                            intersections.Add(new float2(-999.0f, 1.0f));
+                            intersections.Add(new float2(hitB.x, -1.0f));
+                            continue;
+                        }
                     }
                     else
                     {
                         // Line segment ends inside triangle
-                        intersections.Add(new float2(hitA.x, 1.0f));
+                        if (isPointBehindTriangle(b, iTriangle))
+                        {
+                            intersections.Add(new float2(hitA.x, 1.0f));
+                            continue;
+                        }
                     }
 
                     /*
@@ -494,19 +540,22 @@ public class WireframeRenderer : MonoBehaviour
                 intersections.Sort(comparer);
                 float sum = 0.0f;
 
-                float4 start = clipVertices[drawnEdges[iEdge]];
-                float4 end = clipVertices[drawnEdges[iEdge + 1]];
+                // start /= start.w;
+                // end /= end.w;
 
                 for (int i = 0; i < intersections.Length - 1; ++i)
                 {
                     sum += intersections[i].y;
-                    if(sum == 0.0f)
+                    if (sum == 0.0f)
                     {
                         ////////////////////// these interpolation values are in screen space, should be converted !
                         float t0 = intersections[i].x;
                         float t1 = intersections[i + 1].x;
-                        clippedEdges.Add((1.0f - t0) * start + t0 * end);
-                        clippedEdges.Add((1.0f - t1) * start + t1 * end);
+                        if (t1 - t0 > 0.001f)
+                        {
+                            clippedEdges.Add((1.0f - t0) * a + t0 * b);
+                            clippedEdges.Add((1.0f - t1) * a + t1 * b);
+                        }
                     }
                 }
             }
@@ -548,8 +597,6 @@ public class WireframeRenderer : MonoBehaviour
     private NativeArray<float4> globalClipVertices;
     private NativeArray<int> globalDrawnEdges;
     private NativeList<float4> globalDrawnEdgesClipped;
-    private UnsafeList<UnsafeList<float2>> globalEdgeIntersections;
-    // private NativeList<int> globalEdgeIntersectionsOffset;
     private NativeArray<int> globalTriangles;
     private int globalDrawnEdgeCount;
     private int globalTriangleCount;
@@ -628,12 +675,6 @@ public class WireframeRenderer : MonoBehaviour
         globalTriangles = new NativeArray<int>(maxTriangles, Allocator.Persistent);
         globalDrawnEdges = new NativeArray<int>(maxTriangles * 6, Allocator.Persistent);
         globalDrawnEdgesClipped = new NativeList<float4>(Allocator.Persistent);
-        globalEdgeIntersections = new UnsafeList<UnsafeList<float2>>(maxTriangles * 3, AllocatorManager.Persistent);
-        globalEdgeIntersections.Resize(maxTriangles * 3, NativeArrayOptions.ClearMemory);
-        for(int i = 0; i < globalEdgeIntersections.Length; ++i)
-        {
-            globalEdgeIntersections[i] = new UnsafeList<float2>(4, AllocatorManager.Persistent);
-        }
         // globalEdgeIntersectionsOffset = new NativeList<int>(Allocator.Persistent);
     }
 
@@ -651,7 +692,6 @@ public class WireframeRenderer : MonoBehaviour
         globalDrawnEdges.Dispose();
         globalTriangles.Dispose();
         globalDrawnEdgesClipped.Dispose();
-        globalEdgeIntersections.Dispose();
         // globalEdgeIntersectionsOffset.Dispose();
     }
 
@@ -670,7 +710,7 @@ public class WireframeRenderer : MonoBehaviour
         }
 
 
-        var jobHandles = new NativeArray<JobHandle>(meshCaches.Count, Allocator.Temp);
+        NativeArray<JobHandle> jobHandles = new NativeArray<JobHandle>(meshCaches.Count, Allocator.Temp);
         for (int i = 0; i < meshCaches.Count; ++i)
         {
             float4x4 localToClip = math.mul(renderCamera.projectionMatrix, math.mul(renderCamera.worldToCameraMatrix, meshCaches[i].transform.localToWorldMatrix));
@@ -704,11 +744,10 @@ public class WireframeRenderer : MonoBehaviour
 
         if (useLineToTriangleClipping)
         {
-            var job = new LineTriangleClipJob
+            LineTriangleClipJob job = new LineTriangleClipJob
             {
                 clipVertices = globalClipVertices,
                 drawnEdges = globalDrawnEdges,
-                edgeIntersections = globalEdgeIntersections,
                 // edgeIntersectionsOffset = globalEdgeIntersectionsOffset,
                 clippedEdges = globalDrawnEdgesClipped,
                 triangles = globalTriangles,
@@ -773,12 +812,12 @@ public class WireframeRenderer : MonoBehaviour
         {
             return;
         }
-        var meshCache = meshCaches[cacheIndex];
+        MeshCache meshCache = meshCaches[cacheIndex];
         for (int i = 0; i < 3; ++i)
         {
             int globalVertexIdx = meshCache.triangles[triangleIdx + i] + meshCache.globalVertexOffset;
-            globalTriangles[globalTriangleCount++] = globalVertexIdx; 
-            if(globalVertexIdx >= globalClipVertices.Length)
+            globalTriangles[globalTriangleCount++] = globalVertexIdx;
+            if (globalVertexIdx >= globalClipVertices.Length)
             {
                 Debug.LogError("Triangle index too high");
             }
@@ -787,11 +826,11 @@ public class WireframeRenderer : MonoBehaviour
 
     private void AddLine(int cacheIndex, int triangleIdxA, int triangleIdxB)
     {
-        if(globalDrawnEdgeCount + 2 > globalDrawnEdges.Length)
+        if (globalDrawnEdgeCount + 2 > globalDrawnEdges.Length)
         {
             return;
         }
-        var meshCache = meshCaches[cacheIndex];
+        MeshCache meshCache = meshCaches[cacheIndex];
         int indexA = meshCache.triangles[triangleIdxA] + meshCache.globalVertexOffset;
         int indexB = meshCache.triangles[triangleIdxB] + meshCache.globalVertexOffset;
         globalDrawnEdges[globalDrawnEdgeCount++] = indexA;
@@ -814,7 +853,7 @@ public class WireframeRenderer : MonoBehaviour
             // Occlusion culling
             return;
         }
-        var meshCache = meshCaches[cacheIndex];
+        MeshCache meshCache = meshCaches[cacheIndex];
         for (int i = 0; i < meshCache.triangles.Length; i += 3)
         {
             if (TriangleFacesCamera(cacheIndex, i))
@@ -867,7 +906,7 @@ public class WireframeRenderer : MonoBehaviour
 
     private bool TriangleFacesCamera(int cacheIndex, int triangleListIdx)
     {
-        var meshCache = meshCaches[cacheIndex];
+        MeshCache meshCache = meshCaches[cacheIndex];
         // float4 a = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdx]];
         // float4 b = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdx + 1]];
         // float4 c = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdx + 2]];
@@ -891,14 +930,16 @@ public class WireframeRenderer : MonoBehaviour
         renderDevice.SetPoint(target);
     }
 
-    private bool ClipCylinder(ref Vector4 a, ref Vector4 b)
+    private static bool ClipCylinder(ref float4 a, ref float4 b)
     {
+        bool swapped = false;
         // Swap so that a.w <= b.w
         if (a.w > b.w)
         {
-            Vector4 temp = a;
+            float4 temp = a;
             a = b;
             b = temp;
+            swapped = true;
         }
 
         // Segment completely outside near/far plane.
@@ -916,14 +957,14 @@ public class WireframeRenderer : MonoBehaviour
         float det = qb * qb - 4 * qa * qc;
 
         // Cull if no intersection between line and cylinder.
-        if (Mathf.Abs(qa) < Mathf.Epsilon || det < 0.0f)
+        if (math.abs(qa) < math.EPSILON || det < 0.0f)
         {
             return false;
         }
 
         // Solve intersection with cylinder.
-        float tA = (-qb - Mathf.Sqrt(det)) / (2.0f * qa);
-        float tB = (-qb + Mathf.Sqrt(det)) / (2.0f * qa);
+        float tA = (-qb - math.sqrt(det)) / (2.0f * qa);
+        float tB = (-qb + math.sqrt(det)) / (2.0f * qa);
 
         // Swap so that tA <= tB
         if (tA > tB)
@@ -938,10 +979,10 @@ public class WireframeRenderer : MonoBehaviour
         float tFar = (a.z - a.w) / (b.w - a.w + a.z - b.z);
 
         // Solve intersection points.
-        Vector4 pNear = (1 - tNear) * a + tNear * b;
-        Vector4 pFar = (1 - tFar) * a + tFar * b;
-        Vector4 pA = (1 - tA) * a + tA * b;
-        Vector4 pB = (1 - tB) * a + tB * b;
+        float4 pNear = (1 - tNear) * a + tNear * b;
+        float4 pFar = (1 - tFar) * a + tFar * b;
+        float4 pA = (1 - tA) * a + tA * b;
+        float4 pB = (1 - tB) * a + tB * b;
 
         bool lineIntersectsWithNearCircle = pNear.x * pNear.x + pNear.y * pNear.y < pNear.w * pNear.w;
         bool lineIntersectsWithFarCircle = pFar.x * pFar.x + pFar.y * pFar.y < pFar.w * pFar.w;
@@ -975,8 +1016,8 @@ public class WireframeRenderer : MonoBehaviour
         }
 
         // Clip to the original line segment.
-        tA = Mathf.Max(0.0f, tA);
-        tB = Mathf.Min(1.0f, tB);
+        tA = math.max(0.0f, tA);
+        tB = math.min(1.0f, tB);
 
         // The line segment inside the frustrum does not overlap with the line segment being clipped.
         if (tA > 1.0f || tB < 0.0f)
@@ -985,10 +1026,18 @@ public class WireframeRenderer : MonoBehaviour
         }
 
         // Interpolate and output results.
-        Vector4 clippedA = (1 - tA) * a + tA * b;
-        Vector4 clippedB = (1 - tB) * a + tB * b;
-        a = clippedA;
-        b = clippedB;
+        float4 clippedA = (1 - tA) * a + tA * b;
+        float4 clippedB = (1 - tB) * a + tB * b;
+
+        if (swapped)
+        {
+            b = clippedA;
+            a = clippedB;
+        } else
+        {
+            a = clippedA;
+            b = clippedB;
+        }
 
         return true;
     }
@@ -1000,23 +1049,21 @@ public class WireframeRenderer : MonoBehaviour
         {
             for (int i = 0; i < globalDrawnEdgesClipped.Length; i += 2)
             {
-                Vector4 clipFrom = globalDrawnEdgesClipped[i];
-                Vector4 clipTo = globalDrawnEdgesClipped[i + 1];
+                float4 clipFrom = globalDrawnEdgesClipped[i];
+                float4 clipTo = globalDrawnEdgesClipped[i + 1];
 
-                if (!ClipCylinder(ref clipFrom, ref clipTo))
-                {
-                    continue;
-                }
+                // Cylinder clipping performed during triangle clipping
 
                 renderDevice.SetPoint(ClipToScopePoint(clipFrom));
                 renderDevice.DrawLine(ClipToScopePoint(clipTo));
             }
-        } else
+        }
+        else
         {
             for (int i = 0; i < globalDrawnEdgeCount; i += 2)
             {
-                Vector4 clipFrom = globalClipVertices[globalDrawnEdges[i]];
-                Vector4 clipTo = globalClipVertices[globalDrawnEdges[i + 1]];
+                float4 clipFrom = globalClipVertices[globalDrawnEdges[i]];
+                float4 clipTo = globalClipVertices[globalDrawnEdges[i + 1]];
 
                 if (!ClipCylinder(ref clipFrom, ref clipTo))
                 {
@@ -1032,8 +1079,8 @@ public class WireframeRenderer : MonoBehaviour
     private void DrawLine(int cacheIndex, int triangleListIdxFrom, int triangleListIdxTo)
     {
         MeshCache meshCache = meshCaches[cacheIndex];
-        Vector4 clipFrom = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxFrom]];
-        Vector4 clipTo = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxTo]];
+        float4 clipFrom = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxFrom]];
+        float4 clipTo = meshCache.nativeVerticesClip[meshCache.triangles[triangleListIdxTo]];
 
         if (!ClipCylinder(ref clipFrom, ref clipTo))
         {

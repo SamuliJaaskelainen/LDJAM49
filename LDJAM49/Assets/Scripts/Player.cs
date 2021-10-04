@@ -6,7 +6,7 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     public static Player Instance;
-    public static float turnSpeed = 350.0f;
+    public static float turnSpeed = 3.0f;
 
     [SerializeField] Camera cam;
     [SerializeField] float fov = 100.0f;
@@ -117,8 +117,8 @@ public class Player : MonoBehaviour
             CameraShake.Instance.ShakeClamped(0.1f, 0.1f);
         }
 
-        float horizontal = Input.GetAxis("Mouse X") * turnSpeed * Time.deltaTime;
-        float vertical = -Input.GetAxis("Mouse Y") * turnSpeed * Time.deltaTime;
+        float horizontal = Input.GetAxis("Mouse X") * turnSpeed;
+        float vertical = -Input.GetAxis("Mouse Y") * turnSpeed;
         float tilt = 0.0f;
         if (Input.GetKey(KeyCode.Q))
         {
