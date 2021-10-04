@@ -426,5 +426,11 @@ public class Player : MonoBehaviour
     public void WinGame()
     {
         Debug.Log("Game over!");
+        Invoke("LoadEndScene", 8.0f);
+    }
+
+    void LoadEndScene()
+    {
+        UnityEngine.SceneManagement.SceneManager.LoadScene("End");
     }
 }

@@ -50,8 +50,8 @@ public class MapManager : MonoBehaviour
             }
             mapParent.transform.Translate(movement * 10.0f * Time.unscaledDeltaTime, Space.World);
 
-            float horizontal = Input.GetAxis("Mouse X") * Player.turnSpeed / 4.0f * Time.unscaledDeltaTime;
-            float vertical = -Input.GetAxis("Mouse Y") * Player.turnSpeed / 4.0f * Time.unscaledDeltaTime;
+            float horizontal = Input.GetAxis("Mouse X") * Player.turnSpeed / 4.0f;
+            float vertical = -Input.GetAxis("Mouse Y") * Player.turnSpeed / 4.0f;
             mapParent.transform.Rotate(Player.Instance.transform.up, horizontal, Space.World);
             mapParent.transform.Rotate(Player.Instance.transform.right, vertical, Space.World);
 

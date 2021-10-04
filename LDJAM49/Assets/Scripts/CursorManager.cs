@@ -19,4 +19,9 @@ public class CursorManager : MonoBehaviour
             Cursor.lockState = CursorLockMode.None;
         }
     }
+
+    void OnDestroy()
+    {
+        Cursor.lockState = CursorLockMode.None;
+    }
 }
