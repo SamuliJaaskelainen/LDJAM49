@@ -1047,7 +1047,7 @@ public class WireframeRenderer : MonoBehaviour
         float3 b3 = new float3(b.x / b.w, b.y / b.w, b.z / b.w);
         float3 c3 = new float3(c.x / c.w, c.y / c.w, c.z / c.w);
 
-        return math.cross(b3 - a3, c3 - a3).z < 0
+        return math.cross(b3 - a3, c3 - a3).z != 0
             && !(a.z < -a.w && b.z < -b.w && c.z < -c.w) && !(a.z > a.w && b.z > b.w && c.z > c.w) // TODO: add proper frustrum cull
             && !(a.y < -a.w && b.y < -b.w && c.y < -c.w) && !(a.y > a.w && b.y > b.w && c.y > c.w) //
             && !(a.x < -a.w && b.x < -b.w && c.x < -c.w) && !(a.x > a.w && b.x > b.w && c.x > c.w);
