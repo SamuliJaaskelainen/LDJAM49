@@ -410,11 +410,17 @@ public class Player : MonoBehaviour
                 lastCheckpoint = transform.position;
                 isRocketUnlocked = true;
                 rocketKeyMenu.SetActive(true);
-                hintText.text = "Hint: Hold R. MOUSE to lock targets for rockets";
+                hintText.text = "Hint: Hold RIGHT MOUSE to lock targets for rockets";
                 missionText.text = "Next objective: Kill final boss";
                 Debug.Log("Rocket acquired!");
             }
             else if (other.transform.name == "HubTrigger")
+            {
+                lastCheckpoint = transform.position;
+                missionText.text = "Next objective: Find open doorway from hub";
+                hintText.text = "Hint: Hub connects multiple areas";
+            }
+            else if (other.transform.name == "TurboTunnelTrigger")
             {
                 lastCheckpoint = transform.position;
                 missionText.text = "Next objective: Find turbo booster";

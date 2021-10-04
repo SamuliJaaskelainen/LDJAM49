@@ -6,7 +6,7 @@ public class Door : MonoBehaviour
 {
     public void Open()
     {
-        // AUDIO: Door open
+        EffectManager.Instance.SpawnExplosion(transform.position);
         Destroy(gameObject);
     }
 }
