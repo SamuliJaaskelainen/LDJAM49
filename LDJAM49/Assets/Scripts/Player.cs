@@ -304,7 +304,7 @@ public class Player : MonoBehaviour
             AudioManager.Instance.PlaySound("HEAL", transform.position);
             hpTimer = Time.time + hpRechargeRate;
             health++;
-            WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
+            WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 250.0f;
             hpText.text = "Health: ";
             for (int i = 0; i < health; ++i)
             {
@@ -347,7 +347,7 @@ public class Player : MonoBehaviour
         CameraShake.Instance.Shake(0.5f);
         hpTimer = Time.time + hpRechargeDelay;
         health -= damage;
-        WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 20.0f;
+        WireframeRenderer.Instance.randomOffset = Mathf.Floor((float)(10 - health)) / 250.0f;
         hpText.text = "Health: ";
         for (int i = 0; i < health; ++i)
         {

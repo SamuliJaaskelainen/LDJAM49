@@ -6226,9 +6226,9 @@ MonoBehaviour:
   turboMultiplier: 2.5
   spinSpeed: 275
   health: 10
-  isTurboUnlocked: 1
-  isGrabUnlocked: 1
-  isRocketUnlocked: 1
+  isTurboUnlocked: 0
+  isGrabUnlocked: 0
+  isRocketUnlocked: 0
   turboLoop: {fileID: 652829673}
   grabLoop: {fileID: 1733165232}
   lockLoop: {fileID: 1881335662}
