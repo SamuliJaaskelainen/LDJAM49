@@ -70,6 +70,7 @@ MonoBehaviour:
   moveRateMax: 3
   moveSpeedMin: 6
   moveSpeedMax: 12
+  isBoss: 0
 --- !u!143 &2129741755952525940
 CharacterController:
   m_ObjectHideFlags: 0
@@ -128,7 +129,7 @@ MeshFilter:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3015672914330699070}
-  m_Mesh: {fileID: 1055631004398420550, guid: 7e57ca1a668f7834bad38bd9795a770b, type: 3}
+  m_Mesh: {fileID: -4103758066705965667, guid: 7e57ca1a668f7834bad38bd9795a770b, type: 3}
 --- !u!23 &8266221406540429737
 MeshRenderer:
   m_ObjectHideFlags: 0
