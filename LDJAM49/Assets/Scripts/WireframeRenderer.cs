@@ -354,7 +354,7 @@ public class WireframeRenderer : MonoBehaviour
             {
                 float4 a = clipVertices[drawnEdges[iEdge]];
                 float4 b = clipVertices[drawnEdges[iEdge + 1]];
-                if(!ClipCylinder(ref a, ref b))
+                if (!ClipCylinder(ref a, ref b))
                 {
                     continue;
                 }
@@ -772,7 +772,7 @@ public class WireframeRenderer : MonoBehaviour
 
     private void UpdateCache()
     {
-        Debug.Log("Update mesh cache.");
+        //Debug.Log("Update mesh cache.");
         for (int i = 0; i < meshCaches.Count; ++i)
         {
             meshCaches[i].Dispose();
@@ -1033,7 +1033,8 @@ public class WireframeRenderer : MonoBehaviour
         {
             b = clippedA;
             a = clippedB;
-        } else
+        }
+        else
         {
             a = clippedA;
             b = clippedB;
@@ -1044,7 +1045,7 @@ public class WireframeRenderer : MonoBehaviour
 
     private void GlobalRender()
     {
-        Debug.LogFormat("Performing global render for {0}/{1} edges, {2} triangles", globalDrawnEdgesClipped, globalDrawnEdgeCount / 2, globalTriangleCount / 3);
+        //Debug.LogFormat("Performing global render for {0}/{1} edges, {2} triangles", globalDrawnEdgesClipped, globalDrawnEdgeCount / 2, globalTriangleCount / 3);
         if (useLineToTriangleClipping)
         {
             for (int i = 0; i < globalDrawnEdgesClipped.Length; i += 2)

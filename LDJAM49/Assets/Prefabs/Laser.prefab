@@ -44,6 +44,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cf57bf8e61b0460498e73b4816e1a607, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  radius: 0.2
+  damage: 1
   speed: 35
   hitLayers:
     serializedVersion: 2

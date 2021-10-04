@@ -9,6 +9,7 @@ public class EffectManager : MonoBehaviour
     [SerializeField] Transform gameParent;
     [SerializeField] GameObject smallExplosion;
     [SerializeField] GameObject explosion;
+    [SerializeField] GameObject largeExplosion;
 
     void Awake()
     {
@@ -19,6 +20,12 @@ public class EffectManager : MonoBehaviour
     {
         // AUDIO: Enemy dies
         Instantiate(explosion, pos, Quaternion.identity, gameParent);
+    }
+
+    public void SpawnLargeExplosion(Vector3 pos)
+    {
+        // AUDIO: Enemy dies
+        Instantiate(largeExplosion, pos, Quaternion.identity, gameParent);
     }
 
     public void SpawnSmallExplosion(Vector3 pos)

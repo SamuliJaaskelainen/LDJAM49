@@ -21,6 +21,7 @@ public class Enemy : MonoBehaviour
     float moveSpeed;
     [SerializeField] float moveSpeedMin = 2.0f;
     [SerializeField] float moveSpeedMax = 3.0f;
+    [SerializeField] bool isBoss = false;
 
     Transform gameParent;
 
@@ -34,7 +35,14 @@ public class Enemy : MonoBehaviour
         health -= damage;
         if (health <= 0)
         {
-            EffectManager.Instance.SpawnExplosion(transform.position);
+            if (isBoss)
+            {
+                EffectManager.Instance.SpawnLargeExplosion(transform.position);
+            }
+            else
+            {
+                EffectManager.Instance.SpawnExplosion(transform.position);
+            }
             Destroy(gameObject);
         }
         else
@@ -45,7 +53,7 @@ public class Enemy : MonoBehaviour
 
     private void Update()
     {
-        if (Vector3.Distance(Player.Instance.transform.position, transform.position) < 42.0f)
+        if (Vector3.Distance(Player.Instance.transform.position, transform.position) <= Player.Instance.cam.farClipPlane)
         {
             Vector3 futurePlayerPos = Player.Instance.transform.position + Player.Instance.characterController.velocity;
             Quaternion targetRotation = Quaternion.LookRotation(futurePlayerPos - transform.position);
@@ -56,6 +64,10 @@ public class Enemy : MonoBehaviour
                 // AUDIO: Enemy shoot laser
                 shootTimer = Time.time + Random.Range(shootRateMin, shootRateMax);
                 Instantiate(bulletPrefab, transform.position, targetRotation, gameParent);
+                if (isBoss)
+                {
+                    Instantiate(bulletPrefab, transform.position + transform.right * 0.75f, transform.rotation, gameParent);
+                }
             }
 
             if (isMoving)

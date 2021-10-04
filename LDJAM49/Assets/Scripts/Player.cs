@@ -6,21 +6,24 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     public static Player Instance;
-    public static float turnSpeed = 3.0f;
+    public static float turnSpeed = 4.0f;
 
-    [SerializeField] Camera cam;
-    [SerializeField] float fov = 100.0f;
+    [Header("References")]
+    public Camera cam;
     [SerializeField] GameObject gameParent;
-    [SerializeField] float speed = 10.0f;
-    [SerializeField] float turboMultiplier = 2.0f;
-    [SerializeField] float spinSpeed = 100.0f;
-    [SerializeField] int health = 10;
     [SerializeField] ConfigurableJoint grabJoint;
     [SerializeField] Transform barrel;
     [SerializeField] GameObject laserPrefab;
     [SerializeField] GameObject rocketPrefab;
-
     public CharacterController characterController;
+
+    [Header("Stats")]
+    [SerializeField] float fov = 100.0f;
+    [SerializeField] float speed = 10.0f;
+    [SerializeField] float turboMultiplier = 2.0f;
+    [SerializeField] float spinSpeed = 100.0f;
+    [SerializeField] int health = 10;
+
     bool isLockingTargets = false;
     List<GameObject> lockedTargets = new List<GameObject>();
     float laserTimer;
@@ -38,11 +41,16 @@ public class Player : MonoBehaviour
     float fpsTimer;
     float fpsRate = 0.25f;
 
+    [Header("Equipment")]
     [SerializeField] bool isTurboUnlocked = false;
     [SerializeField] bool isGrabUnlocked = false;
     [SerializeField] bool isRocketUnlocked = false;
 
-    [Header("Menu stuff")]
+    [Header("Sfx")]
+    [SerializeField] AudioSource turboLoop;
+    [SerializeField] AudioSource grabLoop;
+
+    [Header("UI")]
     [SerializeField] GameObject menu;
     [SerializeField] GameObject lockedMenu;
     [SerializeField] GameObject unlockedMenu;
@@ -85,10 +93,14 @@ public class Player : MonoBehaviour
         {
             // AUDIO: Turbo boost start
             CameraShake.Instance.Shake(0.3f);
+            turboLoop.Play();
+        }
+        if (turboLoop.isPlaying && !isTurbo)
+        {
+            turboLoop.Pause();
         }
         if (Input.GetKey(KeyCode.W) && !isTurbo)
         {
-            // AUDIO: Turbo boost loop
             movement += transform.forward;
         }
         else if (Input.GetKey(KeyCode.S))
@@ -132,23 +144,23 @@ public class Player : MonoBehaviour
 
         if (Input.GetKey(KeyCode.F1))
         {
-            turnSpeed = Mathf.Clamp(turnSpeed + 1000.0f * Time.deltaTime, 10.0f, 1000.0f);
+            turnSpeed = Mathf.Clamp(turnSpeed + 20.0f * Time.deltaTime, 1.0f, 100.0f);
             sensitivityText.text = "Change mouse sensitivity (" + Mathf.FloorToInt(turnSpeed) + ")";
         }
         else if (Input.GetKey(KeyCode.F2))
         {
-            turnSpeed = Mathf.Clamp(turnSpeed - 1000.0f * Time.deltaTime, 10.0f, 1000.0f);
+            turnSpeed = Mathf.Clamp(turnSpeed - 20.0f * Time.deltaTime, 1.0f, 100.0f);
             sensitivityText.text = "Change mouse sensitivity (" + Mathf.FloorToInt(turnSpeed) + ")";
         }
 
         if (Input.GetKey(KeyCode.F3))
         {
-            fov = Mathf.Clamp(fov + 100.0f * Time.deltaTime, 50.0f, 160.0f);
+            fov = Mathf.Clamp(fov + 50.0f * Time.deltaTime, 50.0f, 160.0f);
             fovText.text = "Change field of view (" + Mathf.FloorToInt(fov) + ")";
         }
         else if (Input.GetKey(KeyCode.F4))
         {
-            fov = Mathf.Clamp(fov - 100.0f * Time.deltaTime, 50.0f, 160.0f);
+            fov = Mathf.Clamp(fov - 50.0f * Time.deltaTime, 50.0f, 160.0f);
             fovText.text = "Change field of view (" + Mathf.FloorToInt(fov) + ")";
         }
         cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, isTurbo ? fov * 1.2f : fov, Time.deltaTime * 10.0f);
@@ -270,9 +282,13 @@ public class Player : MonoBehaviour
                 }
             }
 
-            if (grabJoint.connectedBody)
+            if (grabJoint.connectedBody && !grabLoop.isPlaying)
             {
-                // AUDIO: Grab loop
+                grabLoop.Play();
+            }
+            else if (!grabJoint.connectedBody && grabLoop.isPlaying)
+            {
+                grabLoop.Pause();
             }
         }
 
@@ -398,11 +414,17 @@ public class Player : MonoBehaviour
             }
             else if (other.transform.name == "HubTrigger")
             {
+                // AUDIO: Reach hub
                 lastCheckpoint = transform.position;
                 missionText.text = "Next objective: Find turbo booster";
                 hintText.text = "Hint: New equipment will unlock new actions";
             }
             Destroy(other.gameObject);
         }
+    }
+
+    public void WinGame()
+    {
+        Debug.Log("Game over!");
     }
 }
