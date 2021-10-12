@@ -614,11 +614,39 @@ public class WireframeRenderer : MonoBehaviour
 
     private void Start()
     {
-        // TODO: This won't work in standalone builds.
+        float scaleX = -2.0f;
+        float scaleY = -2.0f;
+        var args = System.Environment.GetCommandLineArgs();
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (args[i] == "-scaleX")
+            {
+                if (args.Length > i)
+                {
+                    if (float.TryParse(args[i + 1], out float result))
+                    {
+                        scaleX = result;
+                        Debug.Log("Use scale x: " + scaleX);
+                    }
+                }
+            }
+            if (args[i] == "-scaleY")
+            {
+                if (args.Length > i)
+                {
+                    if (float.TryParse(args[i + 1], out float result))
+                    {
+                        scaleY = result;
+                        Debug.Log("Use scale y: " + scaleY);
+                    }
+                }
+            }
+        }
+
         if (useAudioRender)
         {
             Debug.Log("Initializing AudioRenderDevice");
-            renderDevice = new AudioRender.AudioRenderDevice(new Vector2(-2.0f, -2.0f));
+            renderDevice = new AudioRender.AudioRenderDevice(new Vector2(scaleX, scaleY));
             Debug.Log("AudioRenderDevice initialized");
         }
         else
